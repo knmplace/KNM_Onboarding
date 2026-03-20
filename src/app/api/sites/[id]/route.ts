@@ -93,15 +93,32 @@ export async function PATCH(
     }
 
     const { siteData, branding } = await buildSiteConfigFromInput(parsed.data);
+
+    // For credential fields that come in blank on edit (the UI intentionally
+    // does not pre-fill passwords), keep the existing DB value rather than
+    // overwriting with null.
+    const mergedData = {
+      ...siteData,
+      wordpressAppPassword:
+        siteData.wordpressAppPassword ?? existing.wordpressAppPassword,
+      profilegridAppPassword:
+        siteData.profilegridAppPassword ?? existing.profilegridAppPassword,
+      smtpHost: siteData.smtpHost ?? existing.smtpHost,
+      smtpPort: siteData.smtpPort ?? existing.smtpPort,
+      smtpSecure: siteData.smtpSecure ?? existing.smtpSecure,
+      smtpUsername: siteData.smtpUsername ?? existing.smtpUsername,
+      smtpPassword: siteData.smtpPassword ?? existing.smtpPassword,
+      smtpFromEmail: siteData.smtpFromEmail ?? existing.smtpFromEmail,
+      smtpFromName: siteData.smtpFromName ?? existing.smtpFromName,
+      n8nWebhookAuthKey:
+        existing.n8nWebhookAuthKey || siteData.n8nWebhookAuthKey,
+      n8nSyncWorkflowId: existing.n8nSyncWorkflowId,
+      n8nReminderWorkflowId: existing.n8nReminderWorkflowId,
+    };
+
     const site = await prisma.site.update({
       where: { id: siteId },
-      data: {
-        ...siteData,
-        n8nWebhookAuthKey:
-          existing.n8nWebhookAuthKey || siteData.n8nWebhookAuthKey,
-        n8nSyncWorkflowId: existing.n8nSyncWorkflowId,
-        n8nReminderWorkflowId: existing.n8nReminderWorkflowId,
-      },
+      data: mergedData,
     });
 
     let provisioning = null;
