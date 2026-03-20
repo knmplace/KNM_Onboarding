@@ -521,6 +521,8 @@ info "Generating Prisma client..."
 npx prisma generate
 
 info "Running database migrations..."
+# Export DATABASE_URL into the current shell so Prisma can read it
+export DATABASE_URL="postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?schema=public"
 npx prisma db push --accept-data-loss
 
 info "Seeding default site..."
