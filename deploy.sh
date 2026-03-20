@@ -293,23 +293,35 @@ fi
 # Auto-generate secrets
 JWT_SECRET="$(openssl rand -base64 32)"
 N8N_WEBHOOK_AUTH_KEY="$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 32)"
-SETUP_PIN="$(openssl rand -base64 6 | tr -dc 'A-Z0-9' | head -c 8)"
-
-# Hash the setup PIN using node (bcrypt)
-SETUP_PIN_HASH="$(node -e "
-const crypto = require('crypto');
-const pin = '${SETUP_PIN}';
-// Simple bcrypt-compatible hash using node's built-in crypto isn't available,
-// so we use a SHA-256 + salt approach and store it for bcrypt comparison.
-// If bcrypt npm package is available, use it; otherwise fallback.
-try {
-  const bcrypt = require('bcrypt');
-  console.log(bcrypt.hashSync(pin, 10));
-} catch(e) {
-  // bcrypt not yet installed — placeholder until npm install runs
-  console.log('PENDING_HASH');
-}
-" 2>/dev/null || echo "PENDING_HASH")"
+# ── Setup PIN — user chooses their own ──────────────────────────────────────
+# The PIN protects the first-run setup wizard. The user picks it now so they
+# know it and we never have to "show it once" or generate something random.
+echo
+info "Choose a Setup PIN for the first-run configuration wizard."
+info "This PIN gates access to /setup where you enter your credentials."
+info "Use 6–12 characters — letters and numbers only, no spaces."
+echo
+SETUP_PIN=""
+while true; do
+  prompt_secret "  Setup PIN (you choose):" SETUP_PIN
+  if [[ ${#SETUP_PIN} -lt 6 ]]; then
+    warn "PIN must be at least 6 characters. Try again."
+    continue
+  fi
+  if [[ ! "$SETUP_PIN" =~ ^[A-Za-z0-9]+$ ]]; then
+    warn "PIN must contain only letters and numbers. Try again."
+    continue
+  fi
+  prompt_secret "  Confirm PIN:" SETUP_PIN_CONFIRM
+  if [[ "$SETUP_PIN" != "$SETUP_PIN_CONFIRM" ]]; then
+    warn "PINs do not match. Try again."
+    continue
+  fi
+  break
+done
+success "Setup PIN confirmed."
+# Hash will be computed after npm install (bcrypt must be available)
+SETUP_PIN_HASH="PENDING_HASH"
 
 # ─── Phase 3b: Install local Postgres if needed ───────────────────────────────
 if [[ "$INSTALL_LOCAL_PG" == "true" ]]; then
@@ -551,7 +563,7 @@ WEBHOOK_PORT="${WEBHOOK_PORT}"
 PM2_APP_NAME="${PM2_APP_NAME}"
 PROJECT_DIR="${INSTALL_DIR}"
 SETUP_REQUIRED="${SETUP_REQ_VAL}"
-SETUP_PIN_HASH="${SETUP_PIN_HASH}"
+SETUP_PIN_HASH="PENDING_HASH"
 ENVEOF
 
 chmod 600 "${INSTALL_DIR}/.env.local"
@@ -562,13 +574,26 @@ info "Installing npm dependencies..."
 npm install --include=dev
 success "Dependencies installed."
 
-# Now bcrypt is available — re-hash the PIN
-if [[ "$SETUP_PIN_HASH" == "PENDING_HASH" ]]; then
-  info "Generating setup PIN hash..."
-  SETUP_PIN_HASH="$(node -e "const b=require('bcrypt');console.log(b.hashSync('${SETUP_PIN}',10));")"
-  sed -i "s|SETUP_PIN_HASH=\"PENDING_HASH\"|SETUP_PIN_HASH=\"${SETUP_PIN_HASH}\"|" "${INSTALL_DIR}/.env.local"
-  success "Setup PIN hash written."
+# Now bcrypt is available — hash the user-chosen PIN.
+# IMPORTANT: bcrypt hashes contain $ characters (e.g. $2b$10$...).
+# Write with single quotes in .env.local so dotenvx does NOT interpolate them.
+info "Hashing setup PIN..."
+SETUP_PIN_HASH="$(node -e "const b=require('bcrypt');process.stdout.write(b.hashSync('${SETUP_PIN}',10));" 2>/dev/null)"
+if [[ -z "$SETUP_PIN_HASH" ]]; then
+  error "Failed to hash setup PIN. Check bcrypt installation."
+  exit 1
 fi
+# Use Python to safely write the single-quoted hash (avoids shell quoting edge cases)
+python3 -c "
+import re, sys
+with open('${INSTALL_DIR}/.env.local', 'r') as f:
+    content = f.read()
+content = content.replace('SETUP_PIN_HASH=\"PENDING_HASH\"', \"SETUP_PIN_HASH='\" + sys.argv[1] + \"'\")
+with open('${INSTALL_DIR}/.env.local', 'w') as f:
+    f.write(content)
+import os; os.chmod('${INSTALL_DIR}/.env.local', 0o600)
+" "$SETUP_PIN_HASH"
+success "Setup PIN hash written (single-quoted to preserve bcrypt \$ chars)."
 
 info "Generating Prisma client..."
 npx prisma generate
@@ -734,8 +759,7 @@ if [[ "$SETUP_REQUIRED" == "true" ]]; then
   echo "  Some credentials were skipped. Before using ADOB, visit:"
   echo -e "  ${BOLD}${NEXT_PUBLIC_APP_URL}/setup${RESET}"
   echo
-  echo -e "  Your setup PIN: ${BOLD}${GREEN}${SETUP_PIN}${RESET}"
-  echo -e "  ${RED}${BOLD}Save this PIN — it will not be shown again.${RESET}"
+  echo "  Use the Setup PIN you chose during this installation to log in."
   echo
 else
   echo "  Login with your WordPress admin username and Application Password."
