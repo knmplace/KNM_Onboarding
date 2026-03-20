@@ -240,6 +240,14 @@ async function provisionSiteWorkflows(site, options = {}) {
   }
 
   const workflows = await listAllWorkflows();
+
+  if (!SOURCE_SYNC_WORKFLOW_ID || !SOURCE_REMINDER_WORKFLOW_ID) {
+    throw new Error(
+      "N8N_TEMPLATE_SYNC_WORKFLOW_ID or N8N_TEMPLATE_REMINDER_WORKFLOW_ID is not set in .env.local.\n" +
+        "Run: npm run n8n:create-templates"
+    );
+  }
+
   const sourceSync = await n8nRequest(
     "GET",
     `/api/v1/workflows/${SOURCE_SYNC_WORKFLOW_ID}`

@@ -1,0 +1,81 @@
+{
+  "name": "TEMPLATE - User Onboarding Reminder & Enforcement",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 4
+            }
+          ]
+        }
+      },
+      "id": "schedule-every-15-min",
+      "name": "Every 15 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        208,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.201:3022/api/onboarding/reminders/run",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Onboarding-Key",
+              "value": "onb_k7x9Qm2pL4vR8wJ5tY6uN3bE1cH0fA"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "run-reminders-api",
+      "name": "Run Reminders API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        464,
+        288
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every 15 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Run Reminders API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "6631f4c7-4990-431b-99ba-d3570f721b7b",
+  "meta": {
+    "instanceId": "6598e6793494a2f72af3fe4f55001bd82c76114d153563576be17a43043d40c1"
+  },
+  "id": "P4iyNyBhx7khpJyA",
+  "tags": []
+}

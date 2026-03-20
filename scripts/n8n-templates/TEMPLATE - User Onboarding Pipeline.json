@@ -1,0 +1,225 @@
+{
+  "name": "TEMPLATE - User Onboarding Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Every 15 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.201:3022/api/onboarding/sync",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Onboarding-Key",
+              "value": "onb_k7x9Qm2pL4vR8wJ5tY6uN3bE1cH0fA"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "sync-api-call",
+      "name": "Call Sync API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "has-new-users",
+              "leftValue": "={{ Number($json.newUsers || 0) }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt",
+                "name": "filter.operator.gt"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "check-new-users",
+      "name": "Has New Users?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://192.168.1.201:3022/api/users",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "step",
+              "value": "pending_approval"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Onboarding-Key",
+              "value": "onb_k7x9Qm2pL4vR8wJ5tY6uN3bE1cH0fA"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-pending-users",
+      "name": "Get Pending Users",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        672,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "no-reply@knmplace.com",
+        "toEmail": "kyle@nikodamas.org",
+        "subject": "=KNMPLACE Pending Approval Users - Sync Summary",
+        "html": "={{ (() => {\n  const sync = $('Call Sync API').item?.json ?? {};\n  const pendingUsers = Array.isArray($json.users) ? $json.users : [];\n  const pendingCount = Number($json.count ?? pendingUsers.length ?? 0);\n\n  const rows = pendingUsers\n    .slice(0, 25)\n    .map((u, i) => {\n      const status = Number(u.rmUserStatus) === 0 ? 'Active' : 'Inactive';\n      const step = String(u.onboardingStep || 'pending_approval').replaceAll('_', ' ');\n      const quality = typeof u.emailQualityScore === 'number'\n        ? `${Math.round(u.emailQualityScore * 100)}%`\n        : 'N/A';\n      const breached = u.emailIsBreached === true ? 'Yes' : 'No';\n      const created = u.createdAt ? new Date(u.createdAt).toLocaleString() : 'N/A';\n\n      return `<tr>\n        <td style=\"padding:8px;border:1px solid #dbe3ee;\">${i + 1}</td>\n        <td style=\"padding:8px;border:1px solid #dbe3ee;\">${u.displayName || 'N/A'}</td>\n        <td style=\"padding:8px;border:1px solid #dbe3ee;\">${u.email || 'N/A'}</td>\n        <td style=\"padding:8px;border:1px solid #dbe3ee;\">${u.wordpressId || 'N/A'}</td>\n        <td style=\"padding:8px;border:1px solid #dbe3ee;\">${step}</td>\n        <td style=\"padding:8px;border:1px solid #dbe3ee;\">${status}</td>\n        <td style=\"padding:8px;border:1px solid #dbe3ee;\">${quality}</td>\n        <td style=\"padding:8px;border:1px solid #dbe3ee;\">${breached}</td>\n        <td style=\"padding:8px;border:1px solid #dbe3ee;\">${created}</td>\n      </tr>`;\n    }).join('');\n\n  const tableRows = rows || '<tr><td colspan=\"9\" style=\"padding:10px;border:1px solid #dbe3ee;\">No pending users were returned by the API.</td></tr>';\n\n  return `<div style=\"font-family:Arial,Helvetica,sans-serif;background:#eef2f7;padding:20px;\">\n    <table role=\"presentation\" width=\"760\" align=\"center\" style=\"max-width:760px;width:100%;background:#ffffff;border:1px solid #dbe3ee;border-radius:8px;border-collapse:collapse;overflow:hidden;\">\n      <tr>\n        <td style=\"background:#334155;color:#ffffff;text-align:center;padding:12px;font-size:12px;letter-spacing:0.7px;text-transform:uppercase;\">KNMPLACE Onboarding Admin Notification</td>\n      </tr>\n      <tr>\n        <td style=\"background:#1f3b57;color:#ffffff;padding:22px 24px;\">\n          <h2 style=\"margin:0;font-size:22px;\">New Users Pending Approval</h2>\n          <p style=\"margin:8px 0 0;color:#dbe7f3;font-size:14px;\">A sync run detected new onboarding activity that requires review.</p>\n        </td>\n      </tr>\n      <tr>\n        <td style=\"padding:18px 24px;\">\n          <table role=\"presentation\" width=\"100%\" style=\"border-collapse:collapse;margin-bottom:14px;\">\n            <tr><td style=\"padding:5px 0;font-size:14px;color:#475569;width:220px;\"><strong>Sync timestamp</strong></td><td style=\"padding:5px 0;font-size:14px;color:#1f2937;\">${new Date().toLocaleString()}</td></tr>\n            <tr><td style=\"padding:5px 0;font-size:14px;color:#475569;\"><strong>Total users in ProfileGrid</strong></td><td style=\"padding:5px 0;font-size:14px;color:#1f2937;\">${Number(sync.totalProfileGrid ?? 0)}</td></tr>\n            <tr><td style=\"padding:5px 0;font-size:14px;color:#475569;\"><strong>New users in this sync</strong></td><td style=\"padding:5px 0;font-size:14px;color:#1f2937;\">${Number(sync.newUsers ?? 0)}</td></tr>\n            <tr><td style=\"padding:5px 0;font-size:14px;color:#475569;\"><strong>Emails validated in this sync</strong></td><td style=\"padding:5px 0;font-size:14px;color:#1f2937;\">${Number(sync.emailsValidated ?? 0)}</td></tr>\n            <tr><td style=\"padding:5px 0;font-size:14px;color:#475569;\"><strong>Pending approval users (current)</strong></td><td style=\"padding:5px 0;font-size:14px;color:#1f2937;\">${pendingCount}</td></tr>\n          </table>\n\n          <p style=\"margin:14px 0 8px;font-size:14px;color:#334155;\"><strong>Pending User Detail</strong></p>\n          <table role=\"presentation\" width=\"100%\" style=\"border-collapse:collapse;font-size:13px;\">\n            <tr style=\"background:#f4f7fb;color:#2f3f54;\">\n              <th align=\"left\" style=\"padding:8px;border:1px solid #dbe3ee;\">#</th>\n              <th align=\"left\" style=\"padding:8px;border:1px solid #dbe3ee;\">Name</th>\n              <th align=\"left\" style=\"padding:8px;border:1px solid #dbe3ee;\">Email</th>\n              <th align=\"left\" style=\"padding:8px;border:1px solid #dbe3ee;\">WP ID</th>\n              <th align=\"left\" style=\"padding:8px;border:1px solid #dbe3ee;\">Step</th>\n              <th align=\"left\" style=\"padding:8px;border:1px solid #dbe3ee;\">PG Status</th>\n              <th align=\"left\" style=\"padding:8px;border:1px solid #dbe3ee;\">Quality</th>\n              <th align=\"left\" style=\"padding:8px;border:1px solid #dbe3ee;\">Breached</th>\n              <th align=\"left\" style=\"padding:8px;border:1px solid #dbe3ee;\">Created</th>\n            </tr>\n            ${tableRows}\n          </table>\n\n          <div style=\"text-align:center;padding:16px 0 6px;\">\n            <a href=\"http://192.168.1.9:3000\" style=\"display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:11px 20px;border-radius:4px;font-size:14px;font-weight:600;\">Open Onboarding Dashboard</a>\n          </div>\n        </td>\n      </tr>\n    </table>\n  </div>`;\n})() }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "email-admin",
+      "name": "Email Admin Notification",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        880,
+        -96
+      ],
+      "webhookId": "5c7266b6-fa53-42d1-a1b3-8b4c2d7c8f31",
+      "credentials": {
+        "smtp": {
+          "id": "h3gA1l8FjQddK8Kw",
+          "name": "Newsletter SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "noop-no-new",
+      "name": "No Action Needed",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        672,
+        112
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every 15 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Call Sync API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Sync API": {
+      "main": [
+        [
+          {
+            "node": "Has New Users?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has New Users?": {
+      "main": [
+        [
+          {
+            "node": "Get Pending Users",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Action Needed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Pending Users": {
+      "main": [
+        [
+          {
+            "node": "Email Admin Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "11514c8d-4d15-4e0d-a2d9-176563d84584",
+  "meta": {
+    "instanceId": "6598e6793494a2f72af3fe4f55001bd82c76114d153563576be17a43043d40c1"
+  },
+  "id": "TDSBwF9SPLUH0H4i",
+  "tags": []
+}

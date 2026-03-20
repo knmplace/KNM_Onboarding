@@ -381,7 +381,7 @@ services:
     image: n8nio/n8n:latest
     restart: unless-stopped
     ports:
-      - "${N8N_PORT}:5678"
+      - "127.0.0.1:${N8N_PORT}:5678"
     environment:
       - N8N_BASIC_AUTH_ACTIVE=true
       - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER}
@@ -467,6 +467,7 @@ except:
     else
       success "n8n API key created automatically."
     fi
+    rm -f /tmp/n8n_session.txt
     N8N_URL="http://localhost:${N8N_PORT}/"
   else
     warn "n8n did not start in time (3 min timeout)."
@@ -556,6 +557,7 @@ INTERNAL_ONBOARDING_API_BASE="${INTERNAL_API_BASE}"
 # ── Security ──────────────────────────────────────────────────────────────────
 JWT_SECRET="${JWT_SECRET}"
 N8N_WEBHOOK_AUTH_KEY="${N8N_WEBHOOK_AUTH_KEY}"
+WEBHOOK_SECRET="${WEBHOOK_SECRET_VAL:-}"
 
 # ── Deployment ────────────────────────────────────────────────────────────────
 APP_PORT="${APP_PORT}"
@@ -678,6 +680,16 @@ if prompt_yn "Set up automatic deployment from a git repository?"; then
     prompt_secret "  Webhook secret (used to verify incoming webhooks):" WEBHOOK_SECRET_VAL
     WEBHOOK_SETUP=true
 
+    # Create a dedicated low-privilege system user for the webhook service
+    if ! id -u adob &>/dev/null; then
+      useradd --system --no-create-home --shell /usr/sbin/nologin adob
+      success "Created system user 'adob' for webhook service."
+    fi
+    # Grant adob user read access to .env.local (owned by root, 600)
+    # by creating a group-readable copy — simpler: just set group adob + 640
+    chown root:adob "${INSTALL_DIR}/.env.local"
+    chmod 640 "${INSTALL_DIR}/.env.local"
+
     # Write systemd service
     SERVICE_NAME="webhook-adob"
     cat > "/etc/systemd/system/${SERVICE_NAME}.service" <<SVCEOF
@@ -687,13 +699,13 @@ After=network.target
 
 [Service]
 Type=simple
-User=root
+User=adob
 WorkingDirectory=${INSTALL_DIR}
 ExecStart=/usr/bin/node ${INSTALL_DIR}/scripts/webhook-server.js
 Environment=WEBHOOK_PORT=${WEBHOOK_PORT}
-Environment=WEBHOOK_SECRET=${WEBHOOK_SECRET_VAL}
 Environment=PROJECT_DIR=${INSTALL_DIR}
 Environment=PM2_APP_NAME=${PM2_APP_NAME}
+EnvironmentFile=-${INSTALL_DIR}/.env.local
 Restart=always
 RestartSec=5
 StandardOutput=journal
