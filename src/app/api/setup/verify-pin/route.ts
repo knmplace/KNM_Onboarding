@@ -6,15 +6,24 @@ import fs from "fs";
 import path from "path";
 
 /** Read SETUP_PIN_HASH directly from .env.local as a fallback.
- *  Next.js dotenvx may not inject values containing $ characters
- *  (bcrypt hashes start with $2b$) when they are double-quoted.
+ *  Next.js dotenvx does not inject values containing $ characters
+ *  (bcrypt hashes start with $2b$) when double-quoted.
  *  Reading the file directly is the safe fallback. */
 function getPinHashFromFile(): string | undefined {
   try {
-    const envPath = path.join(process.cwd(), ".env.local");
+    // Use PROJECT_DIR env var if available (set by deploy.sh), else cwd
+    const dir = process.env.PROJECT_DIR || process.cwd();
+    const envPath = path.join(dir, ".env.local");
     const content = fs.readFileSync(envPath, "utf-8");
-    const match = content.match(/^SETUP_PIN_HASH=["']?([^"'\n]+)["']?/m);
-    return match?.[1];
+    const line = content.split("\n").find((l) => l.startsWith("SETUP_PIN_HASH="));
+    if (!line) return undefined;
+    let val = line.slice("SETUP_PIN_HASH=".length);
+    // Strip surrounding single or double quotes
+    if ((val.startsWith("'") && val.endsWith("'")) ||
+        (val.startsWith('"') && val.endsWith('"'))) {
+      val = val.slice(1, -1);
+    }
+    return val || undefined;
   } catch {
     return undefined;
   }
