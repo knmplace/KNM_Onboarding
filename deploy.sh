@@ -325,9 +325,20 @@ if [[ "$INSTALL_LOCAL_PG" == "true" ]]; then
 
   systemctl start postgresql
   systemctl enable postgresql
+  # Wait for PostgreSQL to be ready to accept connections
+  for i in $(seq 1 12); do
+    sleep 2
+    if sudo -u postgres psql -c "SELECT 1" >/dev/null 2>&1; then break; fi
+    printf "."
+  done
+  echo
   success "PostgreSQL installed and started."
 
-  # Create DB and user
+  # Drop existing DB/user if present (handles re-runs cleanly)
+  sudo -u postgres psql -c "DROP DATABASE IF EXISTS \"${DB_NAME}\";" 2>/dev/null || true
+  sudo -u postgres psql -c "DROP USER IF EXISTS \"${DB_USER}\";" 2>/dev/null || true
+
+  # Create DB and user fresh
   sudo -u postgres psql <<-EOSQL
     CREATE DATABASE "${DB_NAME}";
     CREATE USER "${DB_USER}" WITH ENCRYPTED PASSWORD '${DB_PASSWORD}';
@@ -369,11 +380,15 @@ services:
       - ${N8N_DATA_DIR}:/home/node/.n8n
 EOYML
 
+  # Pull image first so startup poll isn't waiting on a download
+  info "Pulling n8n Docker image (this may take a minute)..."
+  docker pull n8nio/n8n:latest
+
   info "Starting n8n container..."
   docker compose -f "$TEMP_COMPOSE" up -d
 
-  # Wait for n8n to be healthy — up to 3 minutes (first run requires Docker image pull)
-  info "Waiting for n8n to be ready (this may take a few minutes on first run)..."
+  # Wait for n8n to be healthy — up to 3 minutes
+  info "Waiting for n8n to be ready..."
   N8N_READY=false
   for i in $(seq 1 36); do
     sleep 5
