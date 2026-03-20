@@ -73,8 +73,15 @@ async function importTemplate(templateFile, existingWorkflows) {
 
   const template = JSON.parse(fs.readFileSync(templateFile, "utf-8"));
 
-  // Strip the source instance's ID — n8n will assign a new one on POST
-  const { id: _id, ...payload } = template;
+  // n8n's POST /api/v1/workflows only accepts: name, nodes, connections, settings
+  // Exported JSONs contain extra read-only fields (id, createdAt, updatedAt, versionId,
+  // active, tags, etc.) that cause a 400 "must NOT have additional properties" error.
+  const payload = {
+    name: template.name,
+    nodes: template.nodes || [],
+    connections: template.connections || {},
+    settings: template.settings || {},
+  };
 
   const existing = existingWorkflows.find((w) => w.name === template.name) || null;
 
