@@ -2,6 +2,23 @@ import { NextResponse } from "next/server";
 import { compare } from "bcrypt";
 import { cookies } from "next/headers";
 import { SignJWT } from "jose";
+import fs from "fs";
+import path from "path";
+
+/** Read SETUP_PIN_HASH directly from .env.local as a fallback.
+ *  Next.js dotenvx may not inject values containing $ characters
+ *  (bcrypt hashes start with $2b$) when they are double-quoted.
+ *  Reading the file directly is the safe fallback. */
+function getPinHashFromFile(): string | undefined {
+  try {
+    const envPath = path.join(process.cwd(), ".env.local");
+    const content = fs.readFileSync(envPath, "utf-8");
+    const match = content.match(/^SETUP_PIN_HASH=["']?([^"'\n]+)["']?/m);
+    return match?.[1];
+  } catch {
+    return undefined;
+  }
+}
 
 // Rate limiting: max 3 attempts per 15 minutes (in-process, resets on restart)
 const attempts = new Map<string, { count: number; resetAt: number }>();
@@ -55,7 +72,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "PIN is required." }, { status: 400 });
   }
 
-  const storedHash = process.env.SETUP_PIN_HASH;
+  const storedHash = process.env.SETUP_PIN_HASH || getPinHashFromFile();
   if (!storedHash) {
     return NextResponse.json(
       { error: "Setup PIN not configured. Check SETUP_PIN_HASH in .env.local." },
