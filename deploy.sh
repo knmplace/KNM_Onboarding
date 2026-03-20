@@ -362,7 +362,6 @@ if [[ "$INSTALL_LOCAL_N8N" == "true" ]]; then
   # Write to temp location first (INSTALL_DIR may not exist yet)
   TEMP_COMPOSE="/tmp/docker-compose.n8n.yml"
   cat > "$TEMP_COMPOSE" <<EOYML
-version: '3.8'
 services:
   n8n:
     image: n8nio/n8n:latest

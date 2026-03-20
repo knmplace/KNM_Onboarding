@@ -14,8 +14,6 @@
 #   2. Fill in the values
 #   3. Run: docker compose -f infra/docker-compose.n8n.yml up -d
 
-version: '3.8'
-
 services:
   n8n:
     image: n8nio/n8n:latest
