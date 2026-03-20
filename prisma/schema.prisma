@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Site {
+  id                  Int               @id @default(autoincrement())
+  slug                String            @unique
+  name                String
+  isActive            Boolean           @default(true) @map("is_active")
+  onboardingAppUrl    String?           @map("onboarding_app_url")
+  accountLoginUrl     String?           @map("account_login_url")
+  wordpressUrl        String?           @map("wordpress_url")
+  wordpressRestApiUrl String?           @map("wordpress_rest_api_url")
+  wordpressUsername   String?           @map("wordpress_username")
+  wordpressAppPassword String?          @map("wordpress_app_password")
+  profilegridApiUrl   String?           @map("profilegrid_api_url")
+  profilegridUsername String?           @map("profilegrid_username")
+  profilegridAppPassword String?        @map("profilegrid_app_password")
+  smtpHost            String?           @map("smtp_host")
+  smtpPort            Int?              @map("smtp_port")
+  smtpSecure          Boolean?          @map("smtp_secure")
+  smtpUsername        String?           @map("smtp_username")
+  smtpPassword        String?           @map("smtp_password")
+  smtpFromEmail       String?           @map("smtp_from_email")
+  smtpFromName        String?           @map("smtp_from_name")
+  supportEmail        String?           @map("support_email")
+  emailFooterImageUrl String?           @map("email_footer_image_url")
+  n8nWebhookAuthKey   String?           @map("n8n_webhook_auth_key")
+  n8nSyncWorkflowId   String?           @map("n8n_sync_workflow_id")
+  n8nReminderWorkflowId String?         @map("n8n_reminder_workflow_id")
+  breachResearchUrl   String?           @map("breach_research_url")
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
+  onboardingStates    OnboardingState[]
+
+  @@map("site")
+}
+
+model OnboardingState {
+  id              Int       @id @default(autoincrement())
+  siteId          Int?      @map("site_id")
+  wordpressId     String    @map("wordpress_id")
+  email           String
+  displayName     String?   @map("display_name")
+  firstName       String?   @map("first_name")
+  lastName        String?   @map("last_name")
+  site            Site?     @relation(fields: [siteId], references: [id], onDelete: SetNull)
+
+  // Onboarding status
+  onboardingStep  String    @default("pending_approval") @map("onboarding_step")
+  rmUserStatus    Int?      @map("rm_user_status") // 0=active, 1=inactive
+  activatedAt     DateTime? @map("activated_at")
+
+  // Abstract API email validation
+  emailValid          Boolean?  @map("email_valid")
+  emailQualityScore   Float?    @map("email_quality_score")
+  emailDeliverable    Boolean?  @map("email_deliverable")
+  emailIsDisposable   Boolean?  @map("email_is_disposable")
+  emailIsFreeEmail    Boolean?  @map("email_is_free_email")
+  emailIsCatchAll     Boolean?  @map("email_is_catchall")
+  emailIsBreached     Boolean?  @map("email_is_breached")
+  emailValidationRaw  Json?     @map("email_validation_raw") // full API response
+  emailValidatedAt    DateTime? @map("email_validated_at")
+  pendingBreachAlert  Boolean   @default(false) @map("pending_breach_alert")
+  breachAlertSentAt   DateTime? @map("breach_alert_sent_at")
+  breachAlertLastError String?  @map("breach_alert_last_error")
+  breachNotificationSentAt DateTime? @map("breach_notification_sent_at")
+  breachNotificationCount Int @default(0) @map("breach_notification_count")
+
+  // Password tracking
+  initialPasswordHash   String?   @map("initial_password_hash")
+  firstLoginAt          DateTime? @map("first_login_at")
+  lastLoginAt           DateTime? @map("last_login_at")
+
+  // Email tracking
+  adminNotifiedAt         DateTime? @map("admin_notified_at")
+  passwordReminderSentAt  DateTime? @map("password_reminder_sent_at")
+  passwordReminderCount   Int       @default(0) @map("password_reminder_count")
+  congratsSentAt          DateTime? @map("congrats_sent_at")
+  lastReminderSentAt      DateTime? @map("last_reminder_sent_at")
+  reminderCount           Int       @default(0) @map("reminder_count")
+  reminderHistory         Json?     @map("reminder_history")
+  deactivatedAt           DateTime? @map("deactivated_at")
+  deactivationReason      String?   @map("deactivation_reason")
+  deactivationEmailSentAt DateTime? @map("deactivation_email_sent_at")
+
+  // Profile
+  profileUrl    String?   @map("profile_url")
+
+  // Deleted/archived tracking
+  deletedFromWp   Boolean   @default(false) @map("deleted_from_wp")
+  deletedAt       DateTime? @map("deleted_at")
+
+  // Timestamps
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  completedAt   DateTime? @map("completed_at")
+
+  @@unique([siteId, wordpressId], map: "onboarding_state_site_wordpress_id_key")
+  @@index([siteId, onboardingStep, deletedFromWp], map: "onboarding_state_site_step_deleted_idx")
+  @@map("onboarding_state")
+}

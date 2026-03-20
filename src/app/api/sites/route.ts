@@ -1,0 +1,204 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
+import {
+  buildSiteConfigFromInput,
+  listSites,
+  siteCreateSchema,
+} from "@/lib/site-config";
+import { Prisma } from "@/generated/prisma/client";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+const {
+  provisionSiteWorkflows,
+} = require("../../../../scripts/lib/site-n8n-provision.js") as {
+  provisionSiteWorkflows: (
+    site: {
+      id: number;
+      slug: string;
+      name: string;
+      n8nWebhookAuthKey: string | null;
+      smtpFromEmail: string | null;
+    },
+    options?: { activate?: boolean; appUrl?: string }
+  ) => Promise<{
+    ok: boolean;
+    appUrl: string;
+    authMode: string;
+    workflows: {
+      sync: { id: string; name: string; action: string; active: boolean };
+      reminder: { id: string; name: string; action: string; active: boolean };
+    };
+    verification: Array<{
+      name: string;
+      ok: boolean;
+      status: number;
+      detail: string;
+    }>;
+  }>;
+};
+
+export async function GET() {
+  try {
+    const sites = await listSites();
+    const defaultSlug = process.env.DEFAULT_SITE_SLUG || "my-site";
+    return NextResponse.json({
+      sites: sites.map((site) => ({
+        id: site.id,
+        slug: site.slug,
+        name: site.name,
+        isActive: site.isActive,
+        isDefault: site.slug === defaultSlug,
+        onboardingAppUrl: site.onboardingAppUrl,
+        accountLoginUrl: site.accountLoginUrl,
+        wordpressUrl: site.wordpressUrl,
+        wordpressRestApiUrl: site.wordpressRestApiUrl,
+        profilegridApiUrl: site.profilegridApiUrl,
+        emailFooterImageUrl: site.emailFooterImageUrl,
+        supportEmail: site.supportEmail,
+        smtpFromEmail: site.smtpFromEmail,
+        smtpFromName: site.smtpFromName,
+        n8nSyncWorkflowId: site.n8nSyncWorkflowId,
+        n8nReminderWorkflowId: site.n8nReminderWorkflowId,
+        userCount: site._count.onboardingStates,
+        secretsConfigured: {
+          wordpressAppPassword: Boolean(site.wordpressAppPassword),
+          profilegridAppPassword: Boolean(site.profilegridAppPassword),
+          smtpPassword: Boolean(site.smtpPassword),
+          machineKey: Boolean(site.n8nWebhookAuthKey),
+        },
+        createdAt: site.createdAt,
+        updatedAt: site.updatedAt,
+      })),
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const smtpPortRaw =
+      body?.smtpPort === "" || body?.smtpPort === undefined || body?.smtpPort === null
+        ? undefined
+        : Number.parseInt(String(body.smtpPort), 10);
+
+    const parsed = siteCreateSchema.safeParse({
+      name: body?.name,
+      siteUrl: body?.siteUrl,
+      slug: body?.slug,
+      wordpressUsername: body?.wordpressUsername,
+      wordpressAppPassword: body?.wordpressAppPassword,
+      supportEmail: body?.supportEmail,
+      accountLoginUrl: body?.accountLoginUrl,
+      smtpHost: body?.smtpHost,
+      smtpPort: smtpPortRaw,
+      smtpSecure: body?.smtpSecure,
+      smtpUsername: body?.smtpUsername,
+      smtpPassword: body?.smtpPassword,
+      smtpFromEmail: body?.smtpFromEmail,
+      smtpFromName: body?.smtpFromName,
+      emailFooterImageUrl: body?.emailFooterImageUrl,
+      breachResearchUrl: body?.breachResearchUrl,
+    });
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        {
+          error: "Invalid site configuration.",
+          details: parsed.error.flatten(),
+        },
+        { status: 400 }
+      );
+    }
+
+    const { siteData, branding } = await buildSiteConfigFromInput(parsed.data);
+
+    const site = await prisma.site.create({
+      data: siteData,
+    });
+
+    let provisioning = null;
+    try {
+      provisioning = await provisionSiteWorkflows(site, { activate: true });
+
+      await prisma.site.update({
+        where: { id: site.id },
+        data: {
+          n8nSyncWorkflowId: provisioning.workflows.sync.id,
+          n8nReminderWorkflowId: provisioning.workflows.reminder.id,
+        },
+      });
+    } catch (provisionError) {
+      const message =
+        provisionError instanceof Error
+          ? provisionError.message
+          : "Unknown n8n provisioning error";
+      return NextResponse.json(
+        {
+          error: `Site was created, but automated n8n provisioning failed: ${message}`,
+          site: {
+            id: site.id,
+            slug: site.slug,
+            name: site.name,
+          },
+          branding,
+        },
+        { status: 502 }
+      );
+    }
+
+    const refreshedSite = await prisma.site.findUnique({
+      where: { id: site.id },
+    });
+    if (!refreshedSite) {
+      return NextResponse.json(
+        { error: "Site was created but could not be reloaded." },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        ok: true,
+        site: {
+          id: refreshedSite.id,
+          slug: refreshedSite.slug,
+          name: refreshedSite.name,
+          isActive: refreshedSite.isActive,
+          onboardingAppUrl: refreshedSite.onboardingAppUrl,
+          accountLoginUrl: refreshedSite.accountLoginUrl,
+          wordpressUrl: refreshedSite.wordpressUrl,
+          wordpressRestApiUrl: refreshedSite.wordpressRestApiUrl,
+          profilegridApiUrl: refreshedSite.profilegridApiUrl,
+          emailFooterImageUrl: refreshedSite.emailFooterImageUrl,
+          supportEmail: refreshedSite.supportEmail,
+          smtpFromEmail: refreshedSite.smtpFromEmail,
+          smtpFromName: refreshedSite.smtpFromName,
+          n8nSyncWorkflowId: refreshedSite.n8nSyncWorkflowId,
+          n8nReminderWorkflowId: refreshedSite.n8nReminderWorkflowId,
+          createdAt: refreshedSite.createdAt,
+          updatedAt: refreshedSite.updatedAt,
+        },
+        branding,
+        provisioning,
+      },
+      { status: 201 }
+    );
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      return NextResponse.json(
+        { error: "A site with that slug already exists." },
+        { status: 409 }
+      );
+    }
+
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}

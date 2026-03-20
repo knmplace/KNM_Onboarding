@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+button,
+a[href] {
+  cursor: pointer;
+}
+
+button {
+  transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease,
+    filter 180ms ease, box-shadow 180ms ease, transform 120ms ease;
+}
+
+button:hover:not(:disabled) {
+  filter: brightness(1.06) saturate(1.06);
+  background-image: linear-gradient(rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.12));
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2), 0 6px 14px rgba(15, 23, 42, 0.18);
+  transform: translateY(-1px);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}

@@ -1,0 +1,51 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+
+# env files — NEVER commit these
+.env
+.env*.local
+infra/.n8n.env
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# prisma (generated files)
+prisma/migrations/
+src/generated/
+
+# logs
+logs/
+*.log
+*.log.*
+
+# local scratch/temp files
+*.old
+backups/
+
+# MCP config (contains live API keys — never commit)
+.mcp.json
+
+# ADOB project planning files (local use only)
+PLAN.md
+TODO.md

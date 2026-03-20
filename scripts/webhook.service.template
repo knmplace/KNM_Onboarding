@@ -1,0 +1,37 @@
+# ADOB — Webhook Auto-Deploy systemd Service Template
+#
+# deploy.sh fills in the placeholders and writes the final file to:
+#   /etc/systemd/system/webhook-{{APP_NAME}}.service
+#
+# To install manually:
+#   1. Replace all {{PLACEHOLDERS}} with your values
+#   2. Copy to /etc/systemd/system/webhook-adob.service
+#   3. systemctl daemon-reload
+#   4. systemctl enable webhook-adob.service
+#   5. systemctl start webhook-adob.service
+
+[Unit]
+Description=ADOB Git Webhook Auto-Deploy Server
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory={{PROJECT_DIR}}
+ExecStart=/usr/bin/node {{PROJECT_DIR}}/scripts/webhook-server.js
+Restart=always
+RestartSec=5
+
+Environment=NODE_ENV=production
+Environment=PROJECT_DIR={{PROJECT_DIR}}
+Environment=PM2_APP_NAME={{PM2_APP_NAME}}
+Environment=WEBHOOK_PORT={{WEBHOOK_PORT}}
+Environment=WEBHOOK_SECRET={{WEBHOOK_SECRET}}
+
+# Redirect logs to systemd journal
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=webhook-{{APP_NAME}}
+
+[Install]
+WantedBy=multi-user.target
