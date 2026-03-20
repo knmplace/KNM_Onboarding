@@ -94,25 +94,7 @@ async function importTemplate(templateFile, existingWorkflows) {
   }
 }
 
-function writeIdsToEnv(syncId, reminderId) {
-  const envPath = path.resolve(process.cwd(), ".env.local");
-  let content = fs.existsSync(envPath) ? fs.readFileSync(envPath, "utf-8") : "";
-
-  for (const [key, val] of [
-    ["N8N_TEMPLATE_SYNC_WORKFLOW_ID", String(syncId)],
-    ["N8N_TEMPLATE_REMINDER_WORKFLOW_ID", String(reminderId)],
-  ]) {
-    const pattern = new RegExp(`^${key}=.*$`, "m");
-    const line = `${key}="${val}"`;
-    if (pattern.test(content)) {
-      content = content.replace(pattern, line);
-    } else {
-      content += `\n${line}`;
-    }
-  }
-
-  fs.writeFileSync(envPath, content, { mode: 0o600 });
-}
+// Template IDs are looked up by name at provisioning time — no need to store in .env.local.
 
 async function main() {
   const existing = await listAllWorkflows();
@@ -125,9 +107,6 @@ async function main() {
     REMINDER_FILE,
     existing
   );
-
-  // Write IDs back to .env.local so site provisioning can find them
-  writeIdsToEnv(syncWorkflow.id, reminderWorkflow.id);
 
   console.log(
     JSON.stringify(

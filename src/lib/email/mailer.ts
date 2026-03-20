@@ -59,6 +59,9 @@ export async function verifyMailer(
     host: config.host,
     port: config.port,
     secure: config.secure,
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 10000,
     auth: {
       user: config.username,
       pass: config.password,

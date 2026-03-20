@@ -1,11 +1,10 @@
 require("dotenv").config({ path: ".env.local" });
 require("dotenv").config({ path: ".env" });
 
-// These IDs are populated automatically after running: npm run n8n:create-templates
-const SOURCE_SYNC_WORKFLOW_ID =
-  process.env.N8N_TEMPLATE_SYNC_WORKFLOW_ID || null;
-const SOURCE_REMINDER_WORKFLOW_ID =
-  process.env.N8N_TEMPLATE_REMINDER_WORKFLOW_ID || null;
+// Template workflows are looked up by name in n8n — no env var needed.
+// Run `npm run n8n:create-templates` once after deploy to create them.
+const TEMPLATE_SYNC_NAME = "TEMPLATE - User Onboarding Pipeline";
+const TEMPLATE_REMINDER_NAME = "TEMPLATE - User Onboarding Reminder & Enforcement";
 const INTERNAL_ONBOARDING_API_BASE =
   process.env.INTERNAL_ONBOARDING_API_BASE || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:6000";
 
@@ -241,21 +240,18 @@ async function provisionSiteWorkflows(site, options = {}) {
 
   const workflows = await listAllWorkflows();
 
-  if (!SOURCE_SYNC_WORKFLOW_ID || !SOURCE_REMINDER_WORKFLOW_ID) {
+  // Find template workflows by name — no env var IDs needed
+  const templateSync = workflows.find((w) => w.name === TEMPLATE_SYNC_NAME);
+  const templateReminder = workflows.find((w) => w.name === TEMPLATE_REMINDER_NAME);
+
+  if (!templateSync || !templateReminder) {
     throw new Error(
-      "N8N_TEMPLATE_SYNC_WORKFLOW_ID or N8N_TEMPLATE_REMINDER_WORKFLOW_ID is not set in .env.local.\n" +
-        "Run: npm run n8n:create-templates"
+      "Template workflows not found in n8n. Run: npm run n8n:create-templates"
     );
   }
 
-  const sourceSync = await n8nRequest(
-    "GET",
-    `/api/v1/workflows/${SOURCE_SYNC_WORKFLOW_ID}`
-  );
-  const sourceReminder = await n8nRequest(
-    "GET",
-    `/api/v1/workflows/${SOURCE_REMINDER_WORKFLOW_ID}`
-  );
+  const sourceSync = await n8nRequest("GET", `/api/v1/workflows/${templateSync.id}`);
+  const sourceReminder = await n8nRequest("GET", `/api/v1/workflows/${templateReminder.id}`);
 
   const syncName = `${site.name} - User Onboarding Pipeline`;
   const reminderName = `${site.name} - User Onboarding Reminder & Enforcement`;
