@@ -372,36 +372,36 @@ EOYML
   info "Starting n8n container..."
   docker compose -f "$TEMP_COMPOSE" up -d
 
-  # Wait for n8n to be healthy (up to 90 seconds)
-  info "Waiting for n8n to be ready..."
+  # Wait for n8n to be healthy — up to 3 minutes (first run requires Docker image pull)
+  info "Waiting for n8n to be ready (this may take a few minutes on first run)..."
   N8N_READY=false
-  for i in $(seq 1 18); do
+  for i in $(seq 1 36); do
     sleep 5
-    if curl -s "http://localhost:${N8N_PORT}/healthz" | grep -q "ok"; then
+    printf "."
+    if curl -sf "http://localhost:${N8N_PORT}/healthz" 2>/dev/null | grep -q "ok"; then
       N8N_READY=true
       break
     fi
-    echo -n "."
   done
   echo
 
   if [[ "$N8N_READY" == "true" ]]; then
     success "n8n is running at http://localhost:${N8N_PORT}"
-    # Try to create API key via REST
-    LOGIN_RESP=$(curl -s -X POST "http://localhost:${N8N_PORT}/api/v1/auth/login" \
+
+    # n8n with basic auth: API key creation uses X-N8N-BASIC-AUTH header
+    # Give it 5 extra seconds to fully initialize internal services
+    sleep 5
+
+    KEY_RESP=$(curl -s -X POST "http://localhost:${N8N_PORT}/api/v1/user/api-key" \
       -H "Content-Type: application/json" \
       -u "${N8N_BASIC_AUTH_USER}:${N8N_BASIC_AUTH_PASS}" \
-      -d '{"email":"admin@adob.local","password":"'${N8N_BASIC_AUTH_PASS}'"}' 2>/dev/null || echo "{}")
-    N8N_TOKEN=$(echo "$LOGIN_RESP" | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8');try{const j=JSON.parse(d);console.log(j.data?.token||'');}catch{console.log('')}" 2>/dev/null || echo "")
-    if [[ -n "$N8N_TOKEN" ]]; then
-      KEY_RESP=$(curl -s -X POST "http://localhost:${N8N_PORT}/api/v1/users/api-keys" \
-        -H "Content-Type: application/json" \
-        -H "Cookie: n8n-auth=${N8N_TOKEN}" \
-        -d '{"label":"ADOB Installer"}' 2>/dev/null || echo "{}")
-      N8N_API_KEY=$(echo "$KEY_RESP" | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8');try{const j=JSON.parse(d);console.log(j.data?.apiKey||'');}catch{console.log('')}" 2>/dev/null || echo "")
-    fi
+      -d '{"label":"ADOB Installer"}' 2>/dev/null || echo "{}")
+    N8N_API_KEY=$(echo "$KEY_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('apiKey', d.get('data',{}).get('apiKey','')))" 2>/dev/null || echo "")
+
     if [[ -z "$N8N_API_KEY" ]]; then
-      warn "Could not auto-generate n8n API key. Create one manually: http://localhost:${N8N_PORT} → Settings → API."
+      warn "Could not auto-generate n8n API key."
+      warn "After install: visit http://localhost:${N8N_PORT} → Settings → API Keys → Create."
+      warn "Then add it to .env.local: N8N_API_KEY=\"your-key\""
       N8N_API_KEY="PLACEHOLDER_CHANGE_ME"
       SETUP_REQUIRED=true
     else
@@ -409,7 +409,11 @@ EOYML
     fi
     N8N_URL="http://localhost:${N8N_PORT}/"
   else
-    warn "n8n did not start in time. Check 'docker logs' and configure N8N_URL manually."
+    warn "n8n did not start in time (3 min timeout)."
+    warn "Check logs: docker logs tmp-n8n-1"
+    warn "Once n8n is running, add to .env.local:"
+    warn "  N8N_URL=\"http://localhost:${N8N_PORT}/\""
+    warn "  N8N_API_KEY=\"your-key\""
     N8N_URL="http://localhost:${N8N_PORT}/"
     N8N_API_KEY="PLACEHOLDER_CHANGE_ME"
     SETUP_REQUIRED=true
