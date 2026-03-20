@@ -44,15 +44,38 @@ export async function POST(request: Request) {
   }
 
   // Update or add each credential
+  // Use single quotes for values containing $ (prevents dotenvx interpolation of bcrypt hashes etc.)
+  // Use double quotes for all others
   for (const [key, value] of Object.entries(credentials)) {
     if (!key || typeof value !== "string") continue;
-    const escaped = (value as string).replace(/"/g, '\\"');
+    const val = value as string;
     const linePattern = new RegExp(`^${key}=.*$`, "m");
-    const newLine = `${key}="${escaped}"`;
+    let newLine: string;
+    if (val.includes("$")) {
+      // Single-quote to prevent dotenvx from interpreting $ as variable expansion
+      const escaped = val.replace(/'/g, "'\\''");
+      newLine = `${key}='${escaped}'`;
+    } else {
+      const escaped = val.replace(/"/g, '\\"');
+      newLine = `${key}="${escaped}"`;
+    }
     if (linePattern.test(envContent)) {
       envContent = envContent.replace(linePattern, newLine);
     } else {
       envContent += `\n${newLine}`;
+    }
+  }
+
+  // Auto-derive WordPress REST API URLs from WORDPRESS_URL if provided
+  const wpUrl = (credentials["WORDPRESS_URL"] as string | undefined)?.replace(/\/$/, "");
+  if (wpUrl) {
+    const restPattern = /^WORDPRESS_REST_API_URL=.*$/m;
+    const pgPattern = /^PROFILEGRID_API_URL=.*$/m;
+    if (restPattern.test(envContent)) {
+      envContent = envContent.replace(restPattern, `WORDPRESS_REST_API_URL="${wpUrl}/wp-json/wp/v2"`);
+    }
+    if (pgPattern.test(envContent)) {
+      envContent = envContent.replace(pgPattern, `PROFILEGRID_API_URL="${wpUrl}/wp-json/profilegrid/v1"`);
     }
   }
 
