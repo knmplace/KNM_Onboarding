@@ -182,3 +182,51 @@ WARN[0000] the attribute `version` is obsolete, it will be ignored
 ```
 **Status:** Harmless warning from newer Docker Compose versions. Does not affect functionality.
 Will be removed from `docker-compose.n8n.yml` in a future update.
+
+---
+
+## Issue 7: n8n container keeps restarting — permission denied on `/home/node/.n8n/config`
+
+**Symptom:**
+```
+Error: EACCES: permission denied, open '/home/node/.n8n/config'
+```
+Container shows `Restarting (1) X seconds ago` in `docker ps -a`.
+
+**Root Cause:**
+`/opt/n8n-data` is created by `mkdir -p` as root. The n8n Docker image runs as uid 1000
+(`node` user) inside the container. When the volume is mounted, n8n cannot write its config
+file because the directory is owned by root.
+
+**Fix Applied (deploy.sh):**
+Added `chown -R 1000:1000 /opt/n8n-data` immediately after `mkdir -p`, before the container
+starts. This ensures the n8n user has write access from the very first run.
+
+**Manual fix on existing install:**
+```bash
+docker stop $(docker ps -a --filter name=n8n -q)
+chown -R 1000:1000 /opt/n8n-data
+docker start $(docker ps -a --filter name=n8n -q)
+```
+
+---
+
+## Issue 8: n8n API key auto-creation fails — `showSetupOnFirstLoad: true`
+
+**Symptom:**
+`N8N_API_KEY` ends up as `PLACEHOLDER_CHANGE_ME`. n8n is running and healthy but the API
+returns `{"message":"not found"}` or `Internal Server Error` for key creation requests.
+
+**Root Cause:**
+n8n v2+ requires an **owner account** to be set up before any API key endpoints work.
+Previous deploy.sh used `/api/v1/user/api-key` (wrong path) and HTTP basic auth (wrong auth
+method for this flow). The correct flow is:
+1. POST to `/rest/owner/setup` to create the owner account (no auth required on first run)
+2. POST to `/rest/login` to get a session cookie
+3. POST to `/rest/api-keys` with `{label, scopes[], expiresAt}` using the session cookie
+4. Extract `data.rawApiKey` from the response (the JWT used as `X-N8N-API-KEY`)
+
+**Fix Applied (deploy.sh):**
+Replaced the broken API key creation block with the correct 3-step flow above. Also added
+a `chown 1000:1000` before starting the container (Issue 7 fix) since that was preventing
+n8n from starting at all, which blocked this flow entirely.

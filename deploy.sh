@@ -354,6 +354,8 @@ if [[ "$INSTALL_LOCAL_N8N" == "true" ]]; then
 
   N8N_DATA_DIR="/opt/n8n-data"
   mkdir -p "$N8N_DATA_DIR"
+  # n8n container runs as uid 1000 (node user) — must own the data directory
+  chown 1000:1000 "$N8N_DATA_DIR"
 
   # Write docker-compose file
   N8N_COMPOSE_FILE="${INSTALL_DIR}/infra/docker-compose.n8n.yml"
@@ -379,6 +381,10 @@ services:
       - ${N8N_DATA_DIR}:/home/node/.n8n
 EOYML
 
+  # Fix volume ownership BEFORE starting container.
+  # n8n runs as uid 1000 (node) inside Docker — the data dir must be owned by 1000.
+  chown -R 1000:1000 "$N8N_DATA_DIR"
+
   # Pull image first so startup poll isn't waiting on a download
   info "Pulling n8n Docker image (this may take a minute)..."
   docker pull n8nio/n8n:latest
@@ -402,20 +408,48 @@ EOYML
   if [[ "$N8N_READY" == "true" ]]; then
     success "n8n is running at http://localhost:${N8N_PORT}"
 
-    # n8n with basic auth: API key creation uses X-N8N-BASIC-AUTH header
-    # Give it 5 extra seconds to fully initialize internal services
+    # Give n8n 5 extra seconds to fully initialize internal services
     sleep 5
 
-    KEY_RESP=$(curl -s -X POST "http://localhost:${N8N_PORT}/api/v1/user/api-key" \
+    # ── Step 1: Complete n8n owner setup (required before API key creation) ──
+    # n8n v2+ requires owner account setup before the API is usable.
+    # The /rest/owner/setup endpoint creates the owner without needing prior auth.
+    N8N_OWNER_EMAIL="admin@adob.local"
+    SETUP_RESP=$(curl -s -X POST "http://localhost:${N8N_PORT}/rest/owner/setup" \
       -H "Content-Type: application/json" \
-      -u "${N8N_BASIC_AUTH_USER}:${N8N_BASIC_AUTH_PASS}" \
-      -d '{"label":"ADOB Installer"}' 2>/dev/null || echo "{}")
-    N8N_API_KEY=$(echo "$KEY_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('apiKey', d.get('data',{}).get('apiKey','')))" 2>/dev/null || echo "")
+      -c /tmp/n8n_session.txt \
+      -d "{\"email\":\"${N8N_OWNER_EMAIL}\",\"firstName\":\"Admin\",\"lastName\":\"User\",\"password\":\"${N8N_BASIC_AUTH_PASS}\"}" 2>/dev/null || echo "{}")
+
+    # ── Step 2: Login to get session cookie ──
+    LOGIN_RESP=$(curl -s -X POST "http://localhost:${N8N_PORT}/rest/login" \
+      -H "Content-Type: application/json" \
+      -c /tmp/n8n_session.txt \
+      -b /tmp/n8n_session.txt \
+      -d "{\"emailOrLdapLoginId\":\"${N8N_OWNER_EMAIL}\",\"password\":\"${N8N_BASIC_AUTH_PASS}\"}" 2>/dev/null || echo "{}")
+
+    # ── Step 3: Create API key via /rest/api-keys (n8n v2+ endpoint) ──
+    # expiresAt: 4070908800 = year 2099 (effectively non-expiring)
+    KEY_RESP=$(curl -s -X POST "http://localhost:${N8N_PORT}/rest/api-keys" \
+      -H "Content-Type: application/json" \
+      -b /tmp/n8n_session.txt \
+      -d '{"label":"ADOB Deploy Key","scopes":["workflow:read","workflow:write","workflow:create","workflow:delete","workflow:execute","workflow:list","workflow:activate","workflow:deactivate","execution:read","execution:list","tag:read","tag:list"],"expiresAt":4070908800}' \
+      2>/dev/null || echo "{}")
+    rm -f /tmp/n8n_session.txt
+
+    # Extract rawApiKey (the full JWT token used for X-N8N-API-KEY header)
+    N8N_API_KEY=$(echo "$KEY_RESP" | python3 -c "
+import sys, json
+try:
+    d = json.load(sys.stdin)
+    print(d.get('data', {}).get('rawApiKey', ''))
+except:
+    print('')
+" 2>/dev/null || echo "")
 
     if [[ -z "$N8N_API_KEY" ]]; then
       warn "Could not auto-generate n8n API key."
       warn "After install: visit http://localhost:${N8N_PORT} → Settings → API Keys → Create."
-      warn "Then add it to .env.local: N8N_API_KEY=\"your-key\""
+      warn "Then update .env.local: N8N_API_KEY=\"your-key\" and run: pm2 restart ${PM2_APP_NAME}"
       N8N_API_KEY="PLACEHOLDER_CHANGE_ME"
       SETUP_REQUIRED=true
     else
@@ -424,7 +458,8 @@ EOYML
     N8N_URL="http://localhost:${N8N_PORT}/"
   else
     warn "n8n did not start in time (3 min timeout)."
-    warn "Check logs: docker logs tmp-n8n-1"
+    warn "Check logs: docker logs \$(docker ps -a --filter name=n8n -q | head -1)"
+    warn "Common fix: chown -R 1000:1000 ${N8N_DATA_DIR} && docker restart <container>"
     warn "Once n8n is running, add to .env.local:"
     warn "  N8N_URL=\"http://localhost:${N8N_PORT}/\""
     warn "  N8N_API_KEY=\"your-key\""
