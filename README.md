@@ -33,8 +33,8 @@ A single `deploy.sh` script installs and configures everything: Node.js, Postgre
 ## Quick Start
 
 ```bash
-git clone http://your-git-host/your-username/adob.git
-cd adob
+git clone https://github.com/knmplace/KNM_Onboarding.git
+cd KNM_Onboarding
 bash deploy.sh
 ```
 
