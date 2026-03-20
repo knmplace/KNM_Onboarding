@@ -69,7 +69,7 @@ echo
 echo "This installer will:"
 echo "  • Install Node.js 20 LTS, PM2, and Docker (if not present)"
 echo "  • Configure PostgreSQL and/or n8n (local or point to existing)"
-echo "  • Build and start ADOB on port 6000 (default)"
+echo "  • Build and start ADOB on port 6001 (default)"
 echo "  • Optionally set up git webhook auto-deploy"
 echo
 
@@ -214,8 +214,8 @@ info "Press Enter to skip any field. Skipped fields can be configured"
 info "via the setup wizard on first login, or in Sites → Edit."
 echo
 
-prompt "App port [6000]:" APP_PORT_INPUT
-APP_PORT="${APP_PORT_INPUT:-6000}"
+prompt "App port [6001]:" APP_PORT_INPUT
+APP_PORT="${APP_PORT_INPUT:-6001}"
 
 prompt "Webhook port [9100]:" WEBHOOK_PORT_INPUT
 WEBHOOK_PORT="${WEBHOOK_PORT_INPUT:-9100}"

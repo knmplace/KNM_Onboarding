@@ -47,7 +47,7 @@ If any credentials were skipped, `deploy.sh` prints an 8-character Setup PIN at 
 
 ### 4. Complete setup (if needed)
 
-Visit `http://YOUR_SERVER_IP:6000` in your browser. If credentials were skipped, you will be redirected to `/setup`. Enter the PIN to access the setup wizard.
+Visit `http://YOUR_SERVER_IP:6001` in your browser. If credentials were skipped, you will be redirected to `/setup`. Enter the PIN to access the setup wizard.
 
 ---
 
@@ -145,7 +145,7 @@ npm run n8n:create-templates
 
 ### Add your first site
 
-1. Log in at `http://YOUR_SERVER_IP:6000` with your WordPress admin username and Application Password
+1. Log in at `http://YOUR_SERVER_IP:6001` with your WordPress admin username and Application Password
 2. Go to **Sites** → **Add Site**
 3. Enter your WordPress site URL — the form auto-derives the remaining fields
 4. Test the connection and save

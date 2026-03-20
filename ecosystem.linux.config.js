@@ -7,12 +7,12 @@
  * Environment variables (set in .env.local or system env):
  *   PM2_APP_NAME  — PM2 process name          (default: adob)
  *   PROJECT_DIR   — Absolute install path      (default: /opt/adob)
- *   APP_PORT      — Port the Next.js app runs on (default: 6000)
+ *   APP_PORT      — Port the Next.js app runs on (default: 6001)
  */
 
 const appName = process.env.PM2_APP_NAME || "adob";
 const projectDir = process.env.PROJECT_DIR || "/opt/adob";
-const appPort = parseInt(process.env.APP_PORT || "6000", 10);
+const appPort = parseInt(process.env.APP_PORT || "6001", 10);
 
 module.exports = {
   apps: [

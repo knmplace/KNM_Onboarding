@@ -140,8 +140,37 @@ bash deploy.sh
 |--------|--------|
 | Existing PostgreSQL instance? | **N** — install locally |
 | Existing n8n instance? | **N** — install locally via Docker |
-| App port | **Enter** — defaults to 6000 |
+| App port | **Enter** — defaults to 6001 |
 | Webhook port | **Enter** — defaults to 9100 |
+
+---
+
+## Issue 6: Port 6000 reserved by Next.js — app crashes on startup
+
+**Symptom:**
+```
+Bad port: "6000" is reserved for x11
+Read more: https://nextjs.org/docs/messages/reserved-port
+```
+PM2 shows 0 pid, 0 uptime, restarting every 3 seconds.
+
+**Root Cause:**
+Next.js maintains an internal blocklist of reserved ports. Port 6000 is blocked
+because it conflicts with the x11 protocol. The app starts, Next.js immediately
+rejects the port, and PM2 loops restarting it.
+
+**Fix Applied:**
+Changed default app port from **6000 → 6001** across deploy.sh, ecosystem.linux.config.js,
+package.json, and all documentation.
+
+**Manual fix on existing install:**
+```bash
+# Update .env.local
+sed -i 's/APP_PORT="6000"/APP_PORT="6001"/' /opt/adob/.env.local
+
+# Restart
+pm2 restart ONBOARDING
+```
 
 ---
 
