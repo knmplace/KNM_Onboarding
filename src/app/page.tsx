@@ -6,6 +6,7 @@ import { FunnelStats } from "@/components/funnel-stats";
 import { UsersTable, OnboardingUser } from "@/components/users-table";
 import { UserDetailPanel } from "@/components/user-detail-panel";
 import { GuideGeneratorModal } from "@/components/guide-generator-modal";
+import { APP_VERSION } from "@/lib/version";
 
 type StepFilter = "all" | "pending_approval" | "awaiting_password_change" | "completed";
 type BreachFilter = "all" | "true" | "false";
@@ -326,7 +327,7 @@ export default function Dashboard() {
     <main className="max-w-6xl mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold">Onboarding Dashboard</h1>
+          <h1 className="text-2xl font-bold">Onboarding Dashboard <span className="text-xs font-normal text-gray-400 align-middle ml-2">v{APP_VERSION}</span></h1>
           <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
             <label htmlFor="site-select">Selected site:</label>
             <select
