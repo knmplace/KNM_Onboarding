@@ -219,11 +219,14 @@ WEBHOOK_PORT=9100
 INSTALL_DIR="/opt/adob"
 PM2_APP_NAME="adob"
 
-prompt "Public app URL (e.g. https://onboarding.yourdomain.com):" NEXT_PUBLIC_APP_URL
+SERVER_IP=$(hostname -I | awk '{print $1}')
+prompt "Public app URL (e.g. https://onboarding.yourdomain.com) — leave blank to use http://${SERVER_IP}:" NEXT_PUBLIC_APP_URL
 if [[ -z "$NEXT_PUBLIC_APP_URL" ]]; then
-  SERVER_IP=$(hostname -I | awk '{print $1}')
   NEXT_PUBLIC_APP_URL="http://${SERVER_IP}:${APP_PORT}"
   warn "No URL provided — defaulting to http://${SERVER_IP}:${APP_PORT}"
+else
+  # Strip trailing slash
+  NEXT_PUBLIC_APP_URL="${NEXT_PUBLIC_APP_URL%/}"
 fi
 
 prompt "Default site slug [my-site]:" DEFAULT_SITE_SLUG_INPUT
