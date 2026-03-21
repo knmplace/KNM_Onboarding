@@ -97,6 +97,14 @@ async function ensureSchema(client) {
     )
   `);
 
+  // Prisma @updatedAt does not add a DB-level DEFAULT — it manages the value in
+  // application code. On a fresh install prisma db push creates the column without
+  // a DEFAULT, causing raw INSERTs here to fail with a NOT NULL constraint violation.
+  // This ALTER is idempotent and safe to run on every deploy.
+  await client.query(`
+    ALTER TABLE site ALTER COLUMN updated_at SET DEFAULT NOW()
+  `);
+
   await client.query(`
     ALTER TABLE onboarding_state
     ADD COLUMN IF NOT EXISTS site_id INTEGER

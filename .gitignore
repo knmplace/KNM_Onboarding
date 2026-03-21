@@ -26,6 +26,9 @@ npm-debug.log*
 .env*.local
 infra/.n8n.env
 
+# PIN hash file — written by deploy.sh, never committed (contains bcrypt hash)
+.pin-hash
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

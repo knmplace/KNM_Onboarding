@@ -321,7 +321,6 @@ while true; do
 done
 success "Setup PIN confirmed."
 # Hash will be computed after npm install (bcrypt must be available)
-SETUP_PIN_HASH="PENDING_HASH"
 
 # ─── Phase 3b: Install local Postgres if needed ───────────────────────────────
 if [[ "$INSTALL_LOCAL_PG" == "true" ]]; then
@@ -565,7 +564,6 @@ WEBHOOK_PORT="${WEBHOOK_PORT}"
 PM2_APP_NAME="${PM2_APP_NAME}"
 PROJECT_DIR="${INSTALL_DIR}"
 SETUP_REQUIRED="${SETUP_REQ_VAL}"
-SETUP_PIN_HASH="PENDING_HASH"
 ENVEOF
 
 chmod 600 "${INSTALL_DIR}/.env.local"
@@ -583,24 +581,18 @@ success "Audit fix complete."
 
 # Now bcrypt is available — hash the user-chosen PIN.
 # IMPORTANT: bcrypt hashes contain $ characters (e.g. $2b$10$...).
-# Write with single quotes in .env.local so dotenvx does NOT interpolate them.
+# Strategy: write the hash to a dedicated .pin-hash file (not .env.local) so dotenvx
+# never touches it and shell quoting is irrelevant. The app reads this file directly.
 info "Hashing setup PIN..."
 SETUP_PIN_HASH="$(node -e "const b=require('bcrypt');process.stdout.write(b.hashSync('${SETUP_PIN}',10));" 2>/dev/null)"
 if [[ -z "$SETUP_PIN_HASH" ]]; then
   error "Failed to hash setup PIN. Check bcrypt installation."
   exit 1
 fi
-# Use Python to safely write the single-quoted hash (avoids shell quoting edge cases)
-python3 -c "
-import re, sys
-with open('${INSTALL_DIR}/.env.local', 'r') as f:
-    content = f.read()
-content = content.replace('SETUP_PIN_HASH=\"PENDING_HASH\"', \"SETUP_PIN_HASH='\" + sys.argv[1] + \"'\")
-with open('${INSTALL_DIR}/.env.local', 'w') as f:
-    f.write(content)
-import os; os.chmod('${INSTALL_DIR}/.env.local', 0o600)
-" "$SETUP_PIN_HASH"
-success "Setup PIN hash written (single-quoted to preserve bcrypt \$ chars)."
+# Write hash to dedicated file — no quoting, no dotenvx interpolation issues.
+printf '%s' "$SETUP_PIN_HASH" > "${INSTALL_DIR}/.pin-hash"
+chmod 600 "${INSTALL_DIR}/.pin-hash"
+success "Setup PIN hash written to .pin-hash (bcrypt \$ chars safe from shell/dotenvx)."
 
 info "Generating Prisma client..."
 npx prisma generate
@@ -622,13 +614,15 @@ success "Build complete."
 # ─── Phase 7: PM2 ────────────────────────────────────────────────────────────
 header "Phase 7: Starting App with PM2"
 
-# Write finalized ecosystem config
+# Write finalized ecosystem config.
+# IMPORTANT: use start.mjs (not 'npm start') so that dotenv (not dotenvx) loads
+# .env.local before Next.js starts. dotenvx cannot parse bcrypt $ chars and loads
+# 0 variables, which means SETUP_PIN_HASH and other vars are missing at runtime.
 cat > "${INSTALL_DIR}/ecosystem.linux.config.js" <<ECOEOF
 module.exports = {
   apps: [{
     name: '${PM2_APP_NAME}',
-    script: 'npm',
-    args: 'start',
+    script: '${INSTALL_DIR}/start.mjs',
     cwd: '${INSTALL_DIR}',
     instances: 1,
     exec_mode: 'fork',

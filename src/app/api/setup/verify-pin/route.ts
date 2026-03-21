@@ -5,19 +5,29 @@ import { SignJWT } from "jose";
 import fs from "fs";
 import path from "path";
 
-/** Read SETUP_PIN_HASH directly from .env.local as a fallback.
- *  Next.js dotenvx does not inject values containing $ characters
- *  (bcrypt hashes start with $2b$) when double-quoted.
- *  Reading the file directly is the safe fallback. */
+/** Read the bcrypt PIN hash from the dedicated .pin-hash file.
+ *  deploy.sh writes the hash via `printf '%s' "$hash" > .pin-hash` so there
+ *  are no quoting issues and dotenvx never touches the value.
+ *  Falls back to reading SETUP_PIN_HASH from .env.local for backwards compat. */
 function getPinHashFromFile(): string | undefined {
+  const dir = process.env.PROJECT_DIR || process.cwd();
+
+  // Primary: dedicated .pin-hash file (written by deploy.sh, no quoting issues)
   try {
-    // Use PROJECT_DIR env var if available (set by deploy.sh), else cwd
-    const dir = process.env.PROJECT_DIR || process.cwd();
+    const pinHashPath = path.join(dir, ".pin-hash");
+    const val = fs.readFileSync(pinHashPath, "utf-8").trim();
+    if (val) return val;
+  } catch {
+    // file doesn't exist — fall through to legacy .env.local lookup
+  }
+
+  // Legacy fallback: SETUP_PIN_HASH line in .env.local (single-quoted bcrypt hash)
+  try {
     const envPath = path.join(dir, ".env.local");
     const content = fs.readFileSync(envPath, "utf-8");
     const line = content.split("\n").find((l) => l.startsWith("SETUP_PIN_HASH="));
     if (!line) return undefined;
-    let val = line.slice("SETUP_PIN_HASH=".length);
+    let val = line.slice("SETUP_PIN_HASH=".length).trim();
     // Strip surrounding single or double quotes
     if ((val.startsWith("'") && val.endsWith("'")) ||
         (val.startsWith('"') && val.endsWith('"'))) {
