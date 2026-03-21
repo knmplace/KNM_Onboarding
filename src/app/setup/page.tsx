@@ -36,13 +36,14 @@ export default function SetupPage() {
   const [restarting, setRestarting] = useState(false);
 
   useEffect(() => {
+    if (step !== "pin") return;
     fetch("/api/setup/status")
       .then((r) => r.json())
       .then((data: SetupStatus) => {
-        if (!data.required) window.location.href = "/";
+        if (!data.required) window.location.href = "/login";
       })
       .catch(() => {});
-  }, []);
+  }, [step]);
 
   async function handlePinSubmit(e: React.FormEvent) {
     e.preventDefault();
