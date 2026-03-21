@@ -113,7 +113,7 @@ export async function runReminderCycle(
     undefined;
   const wpConfig = getWpConfigForSite(site);
   const profilegridConfig = getProfileGridConfigForSite(site);
-  const mailerConfig = getMailerConfigForSite(site);
+  const mailerConfig = await getMailerConfigForSite(site);
 
   const result: ReminderRunResult = {
     scanned: 0,

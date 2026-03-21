@@ -45,7 +45,7 @@ export async function POST(request: Request) {
 
     const profileGridConfig = getProfileGridConfigForSite(site);
     const wpConfig = getWpConfigForSite(site);
-    const mailerConfig = getMailerConfigForSite(site);
+    const mailerConfig = await getMailerConfigForSite(site);
     const emailBranding = await getSiteEmailBranding(site);
 
     switch (action) {

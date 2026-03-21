@@ -624,7 +624,7 @@ export function getWpConfigForSite(site: {
   };
 }
 
-export function getMailerConfigForSite(site: {
+export async function getMailerConfigForSite(site: {
   slug: string;
   smtpHost: string | null;
   smtpPort: number | null;
@@ -633,30 +633,51 @@ export function getMailerConfigForSite(site: {
   smtpPassword: string | null;
   smtpFromEmail: string | null;
   smtpFromName: string | null;
-}): MailerConfig {
-  const host = site.smtpHost || process.env.SMTP_HOST;
-  const port = site.smtpPort || parseOptionalInt(process.env.SMTP_PORT) || 465;
-  const secure =
-    site.smtpSecure ?? parseOptionalBool(process.env.SMTP_SECURE) ?? true;
-  const username = site.smtpUsername || process.env.SMTP_USERNAME;
-  const password = site.smtpPassword || process.env.SMTP_PASSWORD;
-  const fromEmail = site.smtpFromEmail || process.env.SMTP_FROM_EMAIL;
-  const fromName =
-    site.smtpFromName || process.env.SMTP_FROM_NAME || site.slug.toUpperCase();
-
-  if (!host || !username || !password || !fromEmail) {
-    throw new Error(`Site ${site.slug} is missing SMTP credentials.`);
+}): Promise<MailerConfig> {
+  // If the site has its own SMTP credentials, use them directly
+  if (site.smtpHost && site.smtpUsername && site.smtpPassword && site.smtpFromEmail) {
+    return {
+      host: site.smtpHost,
+      port: site.smtpPort || 465,
+      secure: site.smtpSecure ?? true,
+      username: site.smtpUsername,
+      password: site.smtpPassword,
+      fromEmail: site.smtpFromEmail,
+      fromName: site.smtpFromName || site.slug.toUpperCase(),
+    };
   }
 
-  return {
-    host,
-    port,
-    secure,
-    username,
-    password,
-    fromEmail,
-    fromName,
-  };
+  // Fall back to the DB default SMTP server (isDefault = true)
+  const defaultServer = await prisma.smtpServer.findFirst({
+    where: { isDefault: true },
+  });
+
+  if (defaultServer) {
+    return {
+      host: defaultServer.host,
+      port: defaultServer.port,
+      secure: defaultServer.secure,
+      username: defaultServer.username,
+      password: defaultServer.password,
+      fromEmail: defaultServer.fromEmail,
+      fromName: defaultServer.fromName || site.slug.toUpperCase(),
+    };
+  }
+
+  // Last resort: .env.local values (backwards compat for installs without a DB default set)
+  const host = process.env.SMTP_HOST;
+  const port = parseOptionalInt(process.env.SMTP_PORT) || 465;
+  const secure = parseOptionalBool(process.env.SMTP_SECURE) ?? true;
+  const username = process.env.SMTP_USERNAME;
+  const password = process.env.SMTP_PASSWORD;
+  const fromEmail = process.env.SMTP_FROM_EMAIL;
+  const fromName = process.env.SMTP_FROM_NAME || site.slug.toUpperCase();
+
+  if (!host || !username || !password || !fromEmail) {
+    throw new Error(`Site ${site.slug} has no SMTP configured. Add a server in Settings → SMTP Library and mark it as default.`);
+  }
+
+  return { host, port, secure, username, password, fromEmail, fromName };
 }
 
 export function getMachineAuthKeyForSite(site: {

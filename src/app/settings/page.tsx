@@ -6,16 +6,6 @@ import { ThemeToggle } from "@/components/theme-toggle";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type AppSmtp = {
-  smtpHost: string;
-  smtpPort: string;
-  smtpSecure: string;
-  smtpUsername: string;
-  smtpFromEmail: string;
-  smtpFromName: string;
-  smtpPasswordSet: boolean;
-};
-
 type SmtpServer = {
   id: number;
   label: string;
@@ -25,6 +15,7 @@ type SmtpServer = {
   username: string;
   fromEmail: string;
   fromName: string | null;
+  isDefault: boolean;
   createdAt: string;
   sites: { id: number; name: string; slug: string }[];
 };
@@ -64,18 +55,6 @@ const emptyServerForm = (): ServerForm => ({
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
-  // App-level SMTP state
-  const [appSmtpLoading, setAppSmtpLoading] = useState(true);
-  const [appSmtpSaving, setAppSmtpSaving] = useState(false);
-  const [appSmtpTesting, setAppSmtpTesting] = useState(false);
-  const [appSmtp, setAppSmtp] = useState<AppSmtp>({
-    smtpHost: "", smtpPort: "465", smtpSecure: "true",
-    smtpUsername: "", smtpFromEmail: "", smtpFromName: "",
-    smtpPasswordSet: false,
-  });
-  const [appSmtpPassword, setAppSmtpPassword] = useState("");
-  const [appPresetNote, setAppPresetNote] = useState("");
-
   // SMTP library state
   const [servers, setServers] = useState<SmtpServer[]>([]);
   const [serversLoading, setServersLoading] = useState(true);
@@ -85,21 +64,11 @@ export default function SettingsPage() {
   const [serverTesting, setServerTesting] = useState(false);
   const [presetNote, setPresetNote] = useState("");
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [settingDefaultId, setSettingDefaultId] = useState<number | null>(null);
 
   // Shared notices
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-
-  // ── Load app SMTP ────────────────────────────────────────────────────────────
-  useEffect(() => {
-    fetch("/api/settings/smtp")
-      .then((r) => r.json())
-      .then((data: AppSmtp) => {
-        setAppSmtp(data);
-      })
-      .catch(() => setError("Failed to load app SMTP settings."))
-      .finally(() => setAppSmtpLoading(false));
-  }, []);
 
   // ── Load SMTP library ────────────────────────────────────────────────────────
   async function fetchServers() {
@@ -117,59 +86,20 @@ export default function SettingsPage() {
 
   useEffect(() => { fetchServers(); }, []);
 
-  // ── App SMTP handlers ────────────────────────────────────────────────────────
-  function applyAppPreset(label: string) {
-    const p = PRESETS.find((x) => x.label === label);
-    if (!p) return;
-    setAppPresetNote(p.note || "");
-    setAppSmtp((prev) => ({ ...prev, smtpHost: p.host, smtpPort: String(p.port), smtpSecure: p.secure ? "true" : "false" }));
-  }
-
-  async function saveAppSmtp(e: React.FormEvent) {
-    e.preventDefault();
-    setAppSmtpSaving(true);
+  // ── Set default handler ──────────────────────────────────────────────────────
+  async function setDefaultServer(id: number, label: string) {
+    setSettingDefaultId(id);
     setError(null); setNotice(null);
     try {
-      const res = await fetch("/api/settings/smtp", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...appSmtp, smtpPassword: appSmtpPassword }),
-      });
+      const res = await fetch(`/api/smtp-servers/${id}/set-default`, { method: "POST" });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to save.");
-      setNotice("App SMTP saved. Changes will take effect on next app restart (or automatically on next deployment).");
-      if (appSmtpPassword) { setAppSmtp((p) => ({ ...p, smtpPasswordSet: true })); setAppSmtpPassword(""); }
+      if (!res.ok) throw new Error(data.error || "Failed to set default.");
+      setNotice(`"${label}" is now the app default SMTP server. No restart needed.`);
+      await fetchServers();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save.");
+      setError(err instanceof Error ? err.message : "Failed to set default.");
     } finally {
-      setAppSmtpSaving(false);
-    }
-  }
-
-  async function testAppSmtp() {
-    setAppSmtpTesting(true);
-    setError(null); setNotice(null);
-    try {
-      const res = await fetch("/api/sites/test-smtp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          smtpHost: appSmtp.smtpHost,
-          smtpPort: Number(appSmtp.smtpPort) || undefined,
-          smtpSecure: appSmtp.smtpSecure === "true",
-          smtpUsername: appSmtp.smtpUsername,
-          smtpPassword: appSmtpPassword || undefined,
-          smtpFromEmail: appSmtp.smtpFromEmail,
-          smtpFromName: appSmtp.smtpFromName,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "SMTP test failed.");
-      setNotice(data.result?.detail || "Connected successfully.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "SMTP test failed.");
-    } finally {
-      setAppSmtpTesting(false);
+      setSettingDefaultId(null);
     }
   }
 
@@ -288,80 +218,34 @@ export default function SettingsPage() {
       {error && <div className="theme-alert theme-alert--error mb-4">{error}</div>}
       {notice && <div className="theme-alert theme-alert--success mb-4">{notice}</div>}
 
-      {/* ── App Default SMTP ── */}
-      <section className="theme-card p-6 mb-8 max-w-2xl">
-        <h2 className="font-semibold mb-1">App Default SMTP</h2>
-        <p className="text-xs theme-text-muted mb-4">
-          Fallback used when a site has no SMTP server assigned from the library below. Stored in{" "}
-          <code className="px-1 rounded" style={{ background: "var(--panel-strong)" }}>.env.local</code>{" "}
-          — requires an app restart to take effect.{" "}
-          <span className="theme-text-soft">Tip: add servers to the library instead — those take effect immediately with no restart needed.</span>
-        </p>
-        {appSmtpLoading ? (
-          <p className="text-sm theme-text-muted">Loading...</p>
-        ) : (
-          <form onSubmit={saveAppSmtp} className="space-y-4">
-            <div>
-              <label className={labelClass}>Provider Preset</label>
-              <select onChange={(e) => applyAppPreset(e.target.value)} defaultValue="" className={inputClass}>
-                <option value="">— Select provider to pre-fill —</option>
-                {PRESETS.map((p) => <option key={p.label} value={p.label}>{p.label}</option>)}
-              </select>
-              {appPresetNote && <p className="mt-1 text-xs" style={{ color: "var(--warning-text, #92400e)" }}>{appPresetNote}</p>}
+      {/* ── App Default SMTP banner ── */}
+      {(() => {
+        const def = servers.find((s) => s.isDefault);
+        return (
+          <div className="theme-card p-4 mb-8 max-w-2xl flex items-start gap-3">
+            <div className="shrink-0 mt-0.5">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" className="text-blue-500" style={{ color: "var(--accent)" }}>
+                <circle cx="10" cy="10" r="9" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M10 9v5M10 7h.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
             </div>
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div>
-                <label className={labelClass}>SMTP Host</label>
-                <input type="text" value={appSmtp.smtpHost} onChange={(e) => setAppSmtp((p) => ({ ...p, smtpHost: e.target.value }))} placeholder="smtp.gmail.com" className={inputClass} />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className={labelClass}>Port</label>
-                  <input type="text" value={appSmtp.smtpPort} onChange={(e) => setAppSmtp((p) => ({ ...p, smtpPort: e.target.value }))} placeholder="465" className={inputClass} />
-                </div>
-                <div>
-                  <label className={labelClass}>Secure</label>
-                  <select value={appSmtp.smtpSecure} onChange={(e) => setAppSmtp((p) => ({ ...p, smtpSecure: e.target.value }))} className={inputClass}>
-                    <option value="true">SSL/TLS</option>
-                    <option value="false">STARTTLS</option>
-                  </select>
-                </div>
-              </div>
+            <div className="text-sm">
+              <p className="font-medium mb-0.5">App Default SMTP</p>
+              {serversLoading ? (
+                <span className="theme-text-muted">Loading...</span>
+              ) : def ? (
+                <span className="theme-text-muted">
+                  Currently using <strong className="theme-text">{def.label}</strong> ({def.host}:{def.port}) as the global fallback for sites without a site-specific SMTP. Changes take effect immediately — no restart needed.
+                </span>
+              ) : (
+                <span className="theme-text-muted">
+                  No app default set. Add a server to the library below and click <strong className="theme-text">Set as Default</strong>. Falls back to <code className="px-1 rounded text-xs" style={{ background: "var(--panel-strong)" }}>SMTP_*</code> env vars if present.
+                </span>
+              )}
             </div>
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div>
-                <label className={labelClass}>Username</label>
-                <input type="text" value={appSmtp.smtpUsername} onChange={(e) => setAppSmtp((p) => ({ ...p, smtpUsername: e.target.value }))} className={inputClass} autoComplete="username" />
-              </div>
-              <div>
-                <label className={labelClass}>
-                  Password{" "}
-                  {appSmtp.smtpPasswordSet && <span className="text-xs theme-text-soft">(set — leave blank to keep)</span>}
-                </label>
-                <input type="password" value={appSmtpPassword} onChange={(e) => setAppSmtpPassword(e.target.value)} placeholder={appSmtp.smtpPasswordSet ? "Leave blank to keep" : "Enter password"} className={inputClass} autoComplete="new-password" />
-              </div>
-            </div>
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div>
-                <label className={labelClass}>From Email</label>
-                <input type="email" value={appSmtp.smtpFromEmail} onChange={(e) => setAppSmtp((p) => ({ ...p, smtpFromEmail: e.target.value }))} className={inputClass} />
-              </div>
-              <div>
-                <label className={labelClass}>From Name <span className="text-xs theme-text-soft">(optional)</span></label>
-                <input type="text" value={appSmtp.smtpFromName} onChange={(e) => setAppSmtp((p) => ({ ...p, smtpFromName: e.target.value }))} className={inputClass} />
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <button type="submit" disabled={appSmtpSaving} className="theme-button theme-button--primary px-4 py-2 text-sm disabled:opacity-50">
-                {appSmtpSaving ? "Saving..." : "Save"}
-              </button>
-              <button type="button" onClick={testAppSmtp} disabled={appSmtpTesting} className="theme-button theme-button--ghost px-4 py-2 text-sm disabled:opacity-50">
-                {appSmtpTesting ? "Testing..." : "Test Connection"}
-              </button>
-            </div>
-          </form>
-        )}
-      </section>
+          </div>
+        );
+      })()}
 
       {/* ── SMTP Server Library ── */}
       <section>
@@ -387,7 +271,14 @@ export default function SettingsPage() {
                   <div key={s.id} className="p-4">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <div className="font-medium text-sm">{s.label}</div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-sm">{s.label}</span>
+                          {s.isDefault && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold" style={{ background: "var(--accent)", color: "#fff" }}>
+                              DEFAULT
+                            </span>
+                          )}
+                        </div>
                         <div className="text-xs theme-text-muted mt-0.5">
                           {s.host}:{s.port} · {s.secure ? "SSL/TLS" : "STARTTLS"} · {s.username}
                         </div>
@@ -401,11 +292,47 @@ export default function SettingsPage() {
                           </div>
                         )}
                       </div>
-                      <div className="flex gap-2 shrink-0">
-                        <button type="button" onClick={() => startEdit(s)} className="theme-button theme-button--ghost px-2 py-1 text-xs">Edit</button>
-                        <button type="button" onClick={() => deleteServer(s.id, s.label)} disabled={deletingId === s.id} className="theme-button theme-button--ghost px-2 py-1 text-xs text-red-600 disabled:opacity-50">
-                          {deletingId === s.id ? "..." : "Remove"}
-                        </button>
+                      <div className="flex flex-col gap-1.5 shrink-0 items-end">
+                        {!s.isDefault ? (
+                          <button
+                            type="button"
+                            onClick={() => setDefaultServer(s.id, s.label)}
+                            disabled={settingDefaultId === s.id}
+                            className="theme-button theme-button--ghost px-2 py-1 text-xs disabled:opacity-50"
+                            style={{ color: "var(--accent)" }}
+                          >
+                            {settingDefaultId === s.id ? "Setting..." : "Set as Default"}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              setSettingDefaultId(s.id);
+                              setError(null); setNotice(null);
+                              try {
+                                const res = await fetch(`/api/smtp-servers/${s.id}/set-default`, { method: "DELETE" });
+                                const data = await res.json();
+                                if (!res.ok) throw new Error(data.error || "Failed to clear default.");
+                                setNotice(`"${s.label}" is no longer the app default.`);
+                                await fetchServers();
+                              } catch (err) {
+                                setError(err instanceof Error ? err.message : "Failed to clear default.");
+                              } finally {
+                                setSettingDefaultId(null);
+                              }
+                            }}
+                            disabled={settingDefaultId === s.id}
+                            className="theme-button theme-button--ghost px-2 py-1 text-xs disabled:opacity-50"
+                          >
+                            {settingDefaultId === s.id ? "..." : "Clear Default"}
+                          </button>
+                        )}
+                        <div className="flex gap-2">
+                          <button type="button" onClick={() => startEdit(s)} className="theme-button theme-button--ghost px-2 py-1 text-xs">Edit</button>
+                          <button type="button" onClick={() => deleteServer(s.id, s.label)} disabled={deletingId === s.id} className="theme-button theme-button--ghost px-2 py-1 text-xs text-red-600 disabled:opacity-50">
+                            {deletingId === s.id ? "..." : "Remove"}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>

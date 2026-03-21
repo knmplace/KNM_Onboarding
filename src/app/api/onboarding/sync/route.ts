@@ -94,7 +94,7 @@ export async function POST(request: Request) {
       errors: [] as string[],
     };
     const wpConfig = getWpConfigForSite(site);
-    const mailerConfig = getMailerConfigForSite(site);
+    const mailerConfig = await getMailerConfigForSite(site);
     const researchUrl =
       site.breachResearchUrl ||
       process.env.BREACH_RESEARCH_URL ||

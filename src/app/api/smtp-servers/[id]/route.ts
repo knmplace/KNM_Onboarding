@@ -26,7 +26,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       select: {
         id: true, label: true, host: true, port: true,
         secure: true, username: true, fromEmail: true, fromName: true,
-        createdAt: true, updatedAt: true,
+        isDefault: true, createdAt: true, updatedAt: true,
         sites: { select: { id: true, name: true, slug: true } },
       },
     });

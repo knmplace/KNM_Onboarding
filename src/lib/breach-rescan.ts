@@ -83,7 +83,7 @@ export async function runBreachRescan(
       if (!site) {
         throw new Error("No site configured for user.");
       }
-      const mailerConfig = getMailerConfigForSite(site);
+      const mailerConfig = await getMailerConfigForSite(site);
       const emailBranding = await getSiteEmailBranding(site);
       const validation = await validateEmail(user.email);
       result.validated++;
