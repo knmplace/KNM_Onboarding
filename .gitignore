@@ -50,6 +50,12 @@ backups/
 PLAN.md
 TODO.md
 
+# Internal tracking files — local only, never push
+ERRORS.md
+CHANGELOG.md
+progress.md
+PROJECT_PROGRESS.md
+
 # Local SSH/dev notes — never commit (contains server IPs and auth hints)
 .ssh.env
 .claude-ssh.md
