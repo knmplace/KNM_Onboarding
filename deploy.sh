@@ -439,23 +439,20 @@ EOYML
       -d "{\"emailOrLdapLoginId\":\"${N8N_OWNER_EMAIL}\",\"password\":\"${N8N_BASIC_AUTH_PASS}\"}" 2>/dev/null || echo "{}")
 
     # ── Step 3: Create API key via /rest/api-keys (n8n v2+ endpoint) ──
-    # expiresAt: 4070908800 = year 2099 (effectively non-expiring)
+    # scopes: omit expiresAt (null = non-expiring). Scope names confirmed working
+    # against n8n v2.12 — do not add scopes not returned by GET /rest/api-keys/scopes.
     KEY_RESP=$(curl -s -X POST "http://localhost:${N8N_PORT}/rest/api-keys" \
       -H "Content-Type: application/json" \
       -b /tmp/n8n_session.txt \
-      -d '{"label":"ADOB Deploy Key","scopes":["workflow:read","workflow:write","workflow:create","workflow:delete","workflow:execute","workflow:list","workflow:activate","workflow:deactivate","execution:read","execution:list","tag:read","tag:list"],"expiresAt":4070908800}' \
+      -d '{"label":"ADOB Deploy Key","scopes":["workflow:read","workflow:write","workflow:execute"],"expiresAt":null}' \
       2>/dev/null || echo "{}")
     rm -f /tmp/n8n_session.txt
 
-    # Extract rawApiKey (the full JWT token used for X-N8N-API-KEY header)
-    N8N_API_KEY=$(echo "$KEY_RESP" | python3 -c "
-import sys, json
-try:
-    d = json.load(sys.stdin)
-    print(d.get('data', {}).get('rawApiKey', ''))
-except:
-    print('')
-" 2>/dev/null || echo "")
+    # Extract rawApiKey using node (always available, avoids python3 dependency)
+    N8N_API_KEY=$(echo "$KEY_RESP" | node -e "
+let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{
+  try{const r=JSON.parse(d);process.stdout.write(r.data?.rawApiKey||'');}catch{process.stdout.write('');}
+})" 2>/dev/null || echo "")
 
     if [[ -z "$N8N_API_KEY" ]]; then
       warn "Could not auto-generate n8n API key."
