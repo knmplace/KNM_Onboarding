@@ -222,6 +222,11 @@ WEBHOOK_PORT="${WEBHOOK_PORT_INPUT:-9100}"
 
 prompt "Install directory [/opt/adob]:" INSTALL_DIR_INPUT
 INSTALL_DIR="${INSTALL_DIR_INPUT:-/opt/adob}"
+# Ensure absolute path — prepend /opt/ if user typed a bare name like "adob"
+if [[ "$INSTALL_DIR" != /* ]]; then
+  INSTALL_DIR="/opt/${INSTALL_DIR}"
+  warn "Install directory was relative — using ${INSTALL_DIR}"
+fi
 
 prompt "PM2 app name [adob]:" PM2_NAME_INPUT
 PM2_APP_NAME="${PM2_NAME_INPUT:-adob}"
