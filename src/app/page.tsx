@@ -443,7 +443,7 @@ export default function Dashboard() {
             <option value="false">Clean</option>
           </select>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
           <label className="text-sm theme-text-muted">Search:</label>
           <input
             type="text"
@@ -456,7 +456,7 @@ export default function Dashboard() {
             value={searchScope}
             onChange={(e) => setSearchScope(e.target.value as SearchScope)}
             disabled={searchTerm.trim().length === 0}
-            className="theme-select text-sm px-2 py-1"
+            className="theme-select text-sm px-2 py-1 min-w-36"
           >
             <option value="current">Current Site</option>
             <option value="all">All Sites</option>
