@@ -175,39 +175,6 @@ else
   DB_PASSWORD="$(openssl rand -base64 16 | tr -dc 'A-Za-z0-9' | head -c 20)"
 fi
 
-# ─── Phase 2b: n8n Configuration ─────────────────────────────────────────────
-header "Phase 2b: n8n Configuration"
-info "n8n is required for automated user sync and reminder workflows."
-info "See N8N_SETUP.md for details."
-echo
-
-N8N_URL=""
-N8N_API_KEY=""
-N8N_BASIC_AUTH_USER=""
-N8N_BASIC_AUTH_PASS=""
-INSTALL_LOCAL_N8N=false
-
-if prompt_yn "Do you have an existing n8n instance?"; then
-  prompt "  n8n URL (e.g. https://n8n.yourdomain.com/):" N8N_URL
-  prompt_secret "  n8n API Key:" N8N_API_KEY
-
-  info "Testing n8n connection..."
-  HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -H "X-N8N-API-KEY: ${N8N_API_KEY}" "${N8N_URL%/}/api/v1/workflows" 2>/dev/null || echo "000")
-  if [[ "$HTTP_CODE" == "200" || "$HTTP_CODE" == "201" ]]; then
-    success "n8n connection successful."
-  else
-    warn "Could not reach n8n (HTTP $HTTP_CODE). Check N8N_URL and N8N_API_KEY in .env.local after installation."
-    SETUP_REQUIRED=true
-  fi
-else
-  INSTALL_LOCAL_N8N=true
-  info "Will install n8n locally via Docker..."
-  N8N_PORT="5678"
-  N8N_ENCRYPTION_KEY="$(openssl rand -base64 32)"
-  N8N_BASIC_AUTH_USER="admin"
-  N8N_BASIC_AUTH_PASS="$(openssl rand -base64 12 | tr -dc 'A-Za-z0-9' | head -c 16)"
-fi
-
 # ─── Phase 3: App credential collection ───────────────────────────────────────
 header "Phase 3: Application Credentials"
 info "Press Enter to skip any field. Skipped fields can be configured"
@@ -288,7 +255,6 @@ fi
 
 # Auto-generate secrets
 JWT_SECRET="$(openssl rand -base64 32)"
-N8N_WEBHOOK_AUTH_KEY="$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 32)"
 # ── Setup PIN — user chooses their own ──────────────────────────────────────
 # The PIN protects the first-run setup wizard. The user picks it now so they
 # know it and we never have to "show it once" or generate something random.
@@ -355,125 +321,6 @@ EOSQL
   success "Database '${DB_NAME}' and user '${DB_USER}' created."
 fi
 
-# ─── Phase 3c: Install local n8n if needed ───────────────────────────────────
-if [[ "$INSTALL_LOCAL_N8N" == "true" ]]; then
-  header "Phase 3c: Installing Local n8n (Docker)"
-
-  N8N_DATA_DIR="/opt/n8n-data"
-  mkdir -p "$N8N_DATA_DIR"
-  # n8n container runs as uid 1000 (node user) — must own the data directory
-  chown 1000:1000 "$N8N_DATA_DIR"
-
-  # Write docker-compose file
-  N8N_COMPOSE_FILE="${INSTALL_DIR}/infra/docker-compose.n8n.yml"
-  mkdir -p "${INSTALL_DIR}/infra" 2>/dev/null || true
-
-  # Write to temp location first (INSTALL_DIR may not exist yet)
-  TEMP_COMPOSE="/tmp/docker-compose.n8n.yml"
-  cat > "$TEMP_COMPOSE" <<EOYML
-services:
-  n8n:
-    image: n8nio/n8n:latest
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:${N8N_PORT}:5678"
-    environment:
-      - N8N_BASIC_AUTH_ACTIVE=true
-      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER}
-      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASS}
-      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
-      - N8N_PUBLIC_API_SWAGGERUI_DISABLED=false
-      - N8N_LOG_LEVEL=info
-    volumes:
-      - ${N8N_DATA_DIR}:/home/node/.n8n
-EOYML
-
-  # Fix volume ownership BEFORE starting container.
-  # n8n runs as uid 1000 (node) inside Docker — the data dir must be owned by 1000.
-  chown -R 1000:1000 "$N8N_DATA_DIR"
-
-  # Pull image first so startup poll isn't waiting on a download
-  info "Pulling n8n Docker image (this may take a minute)..."
-  docker pull n8nio/n8n:latest
-
-  info "Starting n8n container..."
-  docker compose -f "$TEMP_COMPOSE" up -d
-
-  # Wait for n8n to be healthy — up to 3 minutes
-  info "Waiting for n8n to be ready..."
-  N8N_READY=false
-  for i in $(seq 1 36); do
-    sleep 5
-    printf "."
-    if curl -sf "http://localhost:${N8N_PORT}/healthz" 2>/dev/null | grep -q "ok"; then
-      N8N_READY=true
-      break
-    fi
-  done
-  echo
-
-  if [[ "$N8N_READY" == "true" ]]; then
-    success "n8n is running at http://localhost:${N8N_PORT}"
-
-    # Give n8n 5 extra seconds to fully initialize internal services
-    sleep 5
-
-    # ── Step 1: Complete n8n owner setup (required before API key creation) ──
-    # n8n v2+ requires owner account setup before the API is usable.
-    # The /rest/owner/setup endpoint creates the owner without needing prior auth.
-    N8N_OWNER_EMAIL="admin@adob.local"
-    SETUP_RESP=$(curl -s -X POST "http://localhost:${N8N_PORT}/rest/owner/setup" \
-      -H "Content-Type: application/json" \
-      -c /tmp/n8n_session.txt \
-      -d "{\"email\":\"${N8N_OWNER_EMAIL}\",\"firstName\":\"Admin\",\"lastName\":\"User\",\"password\":\"${N8N_BASIC_AUTH_PASS}\"}" 2>/dev/null || echo "{}")
-
-    # ── Step 2: Login to get session cookie ──
-    LOGIN_RESP=$(curl -s -X POST "http://localhost:${N8N_PORT}/rest/login" \
-      -H "Content-Type: application/json" \
-      -c /tmp/n8n_session.txt \
-      -b /tmp/n8n_session.txt \
-      -d "{\"emailOrLdapLoginId\":\"${N8N_OWNER_EMAIL}\",\"password\":\"${N8N_BASIC_AUTH_PASS}\"}" 2>/dev/null || echo "{}")
-
-    # ── Step 3: Create API key via /rest/api-keys (n8n v2+ endpoint) ──
-    # scopes: omit expiresAt (null = non-expiring). Scope names confirmed working
-    # against n8n v2.12 — do not add scopes not returned by GET /rest/api-keys/scopes.
-    KEY_RESP=$(curl -s -X POST "http://localhost:${N8N_PORT}/rest/api-keys" \
-      -H "Content-Type: application/json" \
-      -b /tmp/n8n_session.txt \
-      -d '{"label":"ADOB Deploy Key","scopes":["workflow:read","workflow:write","workflow:execute"],"expiresAt":null}' \
-      2>/dev/null || echo "{}")
-    rm -f /tmp/n8n_session.txt
-
-    # Extract rawApiKey using node (always available, avoids python3 dependency)
-    N8N_API_KEY=$(echo "$KEY_RESP" | node -e "
-let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{
-  try{const r=JSON.parse(d);process.stdout.write(r.data?.rawApiKey||'');}catch{process.stdout.write('');}
-})" 2>/dev/null || echo "")
-
-    if [[ -z "$N8N_API_KEY" ]]; then
-      warn "Could not auto-generate n8n API key."
-      warn "After install: visit http://localhost:${N8N_PORT} → Settings → API Keys → Create."
-      warn "Then update .env.local: N8N_API_KEY=\"your-key\" and run: pm2 restart ${PM2_APP_NAME}"
-      N8N_API_KEY="PLACEHOLDER_CHANGE_ME"
-      SETUP_REQUIRED=true
-    else
-      success "n8n API key created automatically."
-    fi
-    rm -f /tmp/n8n_session.txt
-    N8N_URL="http://localhost:${N8N_PORT}/"
-  else
-    warn "n8n did not start in time (3 min timeout)."
-    warn "Check logs: docker logs \$(docker ps -a --filter name=n8n -q | head -1)"
-    warn "Common fix: chown -R 1000:1000 ${N8N_DATA_DIR} && docker restart <container>"
-    warn "Once n8n is running, add to .env.local:"
-    warn "  N8N_URL=\"http://localhost:${N8N_PORT}/\""
-    warn "  N8N_API_KEY=\"your-key\""
-    N8N_URL="http://localhost:${N8N_PORT}/"
-    N8N_API_KEY="PLACEHOLDER_CHANGE_ME"
-    SETUP_REQUIRED=true
-  fi
-fi
-
 DATABASE_URL="postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?schema=public"
 INTERNAL_API_BASE="${NEXT_PUBLIC_APP_URL}"
 
@@ -492,11 +339,6 @@ else
   info "Running from install directory — skipping copy."
 fi
 
-# Copy n8n compose file to final location
-if [[ "$INSTALL_LOCAL_N8N" == "true" && -f "$TEMP_COMPOSE" ]]; then
-  cp "$TEMP_COMPOSE" "${INSTALL_DIR}/infra/docker-compose.n8n.yml"
-fi
-
 mkdir -p "${INSTALL_DIR}/logs"
 cd "$INSTALL_DIR"
 
@@ -511,10 +353,6 @@ cat > "${INSTALL_DIR}/.env.local" <<ENVEOF
 
 # ── Database ──────────────────────────────────────────────────────────────────
 DATABASE_URL="${DATABASE_URL}"
-
-# ── n8n ───────────────────────────────────────────────────────────────────────
-N8N_URL="${N8N_URL}"
-N8N_API_KEY="${N8N_API_KEY}"
 
 # ── WordPress / ProfileGrid ───────────────────────────────────────────────────
 WORDPRESS_URL="${WORDPRESS_URL}"
@@ -548,7 +386,6 @@ INTERNAL_ONBOARDING_API_BASE="${INTERNAL_API_BASE}"
 
 # ── Security ──────────────────────────────────────────────────────────────────
 JWT_SECRET="${JWT_SECRET}"
-N8N_WEBHOOK_AUTH_KEY="${N8N_WEBHOOK_AUTH_KEY}"
 WEBHOOK_SECRET="${WEBHOOK_SECRET_VAL:-}"
 
 # ── Deployment ────────────────────────────────────────────────────────────────
@@ -648,17 +485,8 @@ fi
 
 success "ADOB started via PM2 as '${PM2_APP_NAME}'."
 
-# ─── Phase 8: n8n workflow templates ─────────────────────────────────────────
-header "Phase 8: Creating n8n Workflow Templates"
-if [[ -n "$N8N_API_KEY" && "$N8N_API_KEY" != "PLACEHOLDER_CHANGE_ME" ]]; then
-  node scripts/create-n8n-workflow-templates.js && success "n8n templates created." || warn "Template creation failed — run 'npm run n8n:create-templates' manually."
-else
-  warn "n8n not configured — skipping workflow template creation."
-  warn "Run 'npm run n8n:create-templates' after configuring N8N_URL and N8N_API_KEY."
-fi
-
-# ─── Phase 9: Optional webhook auto-deploy ───────────────────────────────────
-header "Phase 9: Git Webhook Auto-Deploy (Optional)"
+# ─── Phase 8: Optional webhook auto-deploy ───────────────────────────────────
+header "Phase 8: Git Webhook Auto-Deploy (Optional)"
 
 WEBHOOK_SETUP=false
 if prompt_yn "Set up automatic deployment from a git repository?"; then
@@ -733,7 +561,7 @@ SVCEOF
   fi
 fi
 
-# ─── Phase 10: Summary ───────────────────────────────────────────────────────
+# ─── Phase 9: Summary ────────────────────────────────────────────────────────
 header "Deployment Complete"
 
 SERVER_IP=$(hostname -I | awk '{print $1}')
@@ -748,12 +576,7 @@ echo -e "  App Port:       ${BOLD}${APP_PORT}${RESET}"
 echo -e "  PM2 Process:    ${BOLD}${PM2_APP_NAME}${RESET}"
 echo -e "  Install Dir:    ${BOLD}${INSTALL_DIR}${RESET}"
 echo -e "  Database:       ${BOLD}postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}${RESET}"
-if [[ "$INSTALL_LOCAL_N8N" == "true" ]]; then
-  echo -e "  n8n:            ${BOLD}http://${SERVER_IP}:${N8N_PORT}${RESET} (local Docker)"
-  echo -e "  n8n Login:      ${BOLD}${N8N_BASIC_AUTH_USER} / ${N8N_BASIC_AUTH_PASS}${RESET}"
-else
-  echo -e "  n8n:            ${BOLD}${N8N_URL}${RESET}"
-fi
+echo -e "  Scheduler:      ${BOLD}Built-in (sync=15min, reminders=weekly, breach=monthly)${RESET}"
 echo
 
 if [[ "$SETUP_REQUIRED" == "true" ]]; then
@@ -773,8 +596,9 @@ fi
 echo
 echo "  Next steps:"
 echo "  1. Install the WordPress mu-plugin (see WORDPRESS_SETUP.md)"
-echo "  2. Add your first managed site at ${NEXT_PUBLIC_APP_URL}/sites"
-echo "  3. n8n workflows are created automatically when you add a site"
+echo "  2. Visit ${NEXT_PUBLIC_APP_URL}/setup to complete configuration"
+echo "  3. Add your first managed site at ${NEXT_PUBLIC_APP_URL}/sites"
+echo "  4. The built-in scheduler handles sync, reminders, and breach scans automatically"
 echo
 echo "  Logs: pm2 logs ${PM2_APP_NAME}"
 echo "  Docs: ${INSTALL_DIR}/DEPLOY.md"

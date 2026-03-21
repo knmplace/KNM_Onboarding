@@ -10,10 +10,7 @@
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
-    "site:ensure-default": "node scripts/ensure-default-site.js",
-    "n8n:create-templates": "node scripts/create-n8n-workflow-templates.js",
-    "site:setup-n8n": "node scripts/setup-site-n8n-workflows.js",
-    "site:verify-provisioning": "node scripts/verify-site-provisioning.js"
+    "site:ensure-default": "node scripts/ensure-default-site.js"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.4.2",
@@ -21,6 +18,7 @@
     "bcrypt": "^6.0.0",
     "jose": "^6.2.0",
     "next": "^16.2.1",
+    "node-cron": "^4.2.1",
     "nodemailer": "^8.0.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -30,6 +28,7 @@
     "@tailwindcss/postcss": "^4",
     "@types/bcrypt": "^5.0.2",
     "@types/node": "^20",
+    "@types/node-cron": "^3.0.11",
     "@types/nodemailer": "^7.0.11",
     "@types/react": "^19",
     "@types/react-dom": "^19",
