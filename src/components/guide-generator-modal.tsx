@@ -144,18 +144,18 @@ export function GuideGeneratorModal({ onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+      <div className="theme-card w-full max-w-lg max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: "var(--border)" }}>
           <div>
-            <h2 className="text-lg font-bold text-gray-900">Generate Onboarding Guide</h2>
-            <p className="text-xs text-gray-500 mt-0.5">
+            <h2 className="text-lg font-bold">Generate Onboarding Guide</h2>
+            <p className="text-xs theme-text-muted mt-0.5">
               Enter a site URL to auto-detect branding, then generate a branded PDF guide.
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-xl font-light leading-none"
+            className="theme-text-soft hover:text-[var(--text)] text-xl font-light leading-none"
           >
             ✕
           </button>
@@ -164,7 +164,7 @@ export function GuideGeneratorModal({ onClose }: Props) {
         <div className="px-6 py-5 space-y-5">
           {/* Step 1 — URL + fetch */}
           <form onSubmit={handleFetchBranding} className="space-y-3">
-            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            <div className="text-xs font-semibold theme-text-muted uppercase tracking-wide">
               Step 1 — Detect Site Branding
             </div>
             <div className="flex gap-2">
@@ -173,19 +173,19 @@ export function GuideGeneratorModal({ onClose }: Props) {
                 value={siteUrl}
                 onChange={(e) => setSiteUrl(e.target.value)}
                 placeholder="https://example.com"
-                className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm"
+                className="theme-input flex-1 px-3 py-2 text-sm"
                 required
               />
               <button
                 type="submit"
                 disabled={fetchState === "fetching"}
-                className="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap"
+                className="theme-button theme-button--primary px-4 py-2 text-sm disabled:opacity-50 whitespace-nowrap"
               >
                 {fetchState === "fetching" ? "Fetching…" : "Fetch Branding"}
               </button>
             </div>
             {fetchError && (
-              <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
+              <p className="theme-alert theme-alert--error text-xs px-3 py-2">
                 {fetchError}
               </p>
             )}
@@ -197,7 +197,7 @@ export function GuideGeneratorModal({ onClose }: Props) {
               className="rounded-lg border p-4 space-y-3"
               style={{ borderColor: effectiveColor + "44", background: effectiveColor + "0d" }}
             >
-              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <div className="text-xs font-semibold theme-text-muted uppercase tracking-wide">
                 Detected Branding
               </div>
               <div className="flex items-center gap-3">
@@ -219,8 +219,8 @@ export function GuideGeneratorModal({ onClose }: Props) {
                   </div>
                 )}
                 <div>
-                  <div className="font-semibold text-sm text-gray-900">{branding.siteName}</div>
-                  <div className="text-xs text-gray-500">{branding.rawUrl}</div>
+                  <div className="font-semibold text-sm">{branding.siteName}</div>
+                  <div className="text-xs theme-text-muted">{branding.rawUrl}</div>
                 </div>
                 <div className="ml-auto flex items-center gap-2">
                   <div
@@ -274,7 +274,7 @@ export function GuideGeneratorModal({ onClose }: Props) {
                   )}
                 </div>
               </div>
-              <div className="text-xs text-gray-500">
+                <div className="text-xs theme-text-muted">
                 Color:{" "}
                 <code className="bg-white border border-gray-200 rounded px-1">{effectiveColor}</code>
                 {" "}— click the color picker to override
@@ -284,7 +284,7 @@ export function GuideGeneratorModal({ onClose }: Props) {
 
           {/* Step 2 — Customize */}
           <div className="space-y-3">
-            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            <div className="text-xs font-semibold theme-text-muted uppercase tracking-wide">
               Step 2 — Confirm Details
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -294,7 +294,7 @@ export function GuideGeneratorModal({ onClose }: Props) {
                   value={siteName}
                   onChange={(e) => setSiteName(e.target.value)}
                   placeholder="My Site"
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                    className="theme-input px-3 py-2 text-sm"
                 />
               </label>
               <label className="text-sm">
@@ -304,7 +304,7 @@ export function GuideGeneratorModal({ onClose }: Props) {
                   value={supportEmail}
                   onChange={(e) => setSupportEmail(e.target.value)}
                   placeholder="support@example.com"
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                    className="theme-input px-3 py-2 text-sm"
                 />
               </label>
             </div>
@@ -315,7 +315,7 @@ export function GuideGeneratorModal({ onClose }: Props) {
                 value={loginUrl}
                 onChange={(e) => setLoginUrl(e.target.value)}
                 placeholder="https://example.com/login"
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                className="theme-input px-3 py-2 text-sm"
               />
             </label>
           </div>

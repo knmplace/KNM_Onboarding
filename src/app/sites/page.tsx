@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 type SiteSummary = {
   id: number;
@@ -124,9 +125,7 @@ export default function SitesPage() {
   const [editingSiteId, setEditingSiteId] = useState<number | null>(null);
   const [testingSiteId, setTestingSiteId] = useState<number | null>(null);
   const [testingDraftSmtp, setTestingDraftSmtp] = useState(false);
-  const [connectionResults, setConnectionResults] = useState<
-    Record<number, ConnectionResults>
-  >({});
+  const [connectionResults, setConnectionResults] = useState<Record<number, ConnectionResults>>({});
 
   const derived = useMemo(() => {
     const siteUrl = form.siteUrl ? normalizeUrl(form.siteUrl) : "";
@@ -292,34 +291,26 @@ export default function SitesPage() {
   }
 
   return (
-    <main className="max-w-6xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-6">
+    <main className="page-shell">
+      <div className="flex items-center justify-between mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold">Sites</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm theme-text-muted mt-1">
             Manage your connected sites. The first site is set as the default during deployment.
           </p>
         </div>
-        <Link
-          href="/"
-          className="px-3 py-1.5 bg-white border border-gray-300 text-sm rounded hover:bg-gray-50"
-        >
-          Back to Dashboard
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/" className="theme-button theme-button--ghost px-3 py-1.5 text-sm">
+            Back to Dashboard
+          </Link>
+          <ThemeToggle />
+        </div>
       </div>
 
-      {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded">
-          {error}
-        </div>
-      )}
-      {notice && (
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 text-sm rounded">
-          {notice}
-        </div>
-      )}
+      {error && <div className="theme-alert theme-alert--error">{error}</div>}
+      {notice && <div className="theme-alert theme-alert--success">{notice}</div>}
       {branding && (
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 text-blue-800 text-sm rounded">
+        <div className="theme-alert theme-alert--info">
           <div className="font-medium">Branding discovered during site creation</div>
           <div className="mt-1">Detected name: {branding.detectedName || "Not found"}</div>
           <div>Logo URL: {branding.logoUrl || "Not found"}</div>
@@ -328,21 +319,21 @@ export default function SitesPage() {
       )}
 
       <div className="grid gap-6 lg:grid-cols-[1.1fr,0.9fr]">
-        <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-200">
+        <section className="theme-card overflow-hidden">
+          <div className="px-5 py-4 border-b" style={{ borderColor: "var(--border)" }}>
             <h2 className="font-semibold">Configured Sites</h2>
           </div>
           {loading ? (
-            <div className="p-5 text-sm text-gray-500">Loading sites...</div>
+            <div className="p-5 text-sm theme-text-muted">Loading sites...</div>
           ) : sites.length === 0 ? (
-            <div className="p-5 text-sm text-gray-500">No sites configured yet.</div>
+            <div className="p-5 text-sm theme-text-muted">No sites configured yet.</div>
           ) : (
-            <div className="divide-y divide-gray-200">
+            <div className="divide-y" style={{ borderColor: "var(--border)" }}>
               {sites.map((site) => (
                 <div key={site.id} className="p-5">
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start justify-between gap-4 flex-wrap">
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-semibold text-lg">{site.name}</h3>
                         <span className="px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-700">
                           {site.slug}
@@ -353,62 +344,72 @@ export default function SitesPage() {
                           </span>
                         )}
                       </div>
-                      <p className="text-sm text-gray-500 mt-1">
-                        {site.isActive ? "Active" : "Inactive"} • {site.userCount} linked users
+                      <p className="text-sm theme-text-muted mt-1">
+                        {site.isActive ? "Active" : "Inactive"} - {site.userCount} linked users
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => startEdit(site)}
-                      className="px-3 py-1.5 bg-white border border-gray-300 text-sm rounded hover:bg-gray-50"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => runConnectionTests(site.id)}
-                      disabled={testingSiteId === site.id}
-                      className="px-3 py-1.5 bg-white border border-gray-300 text-sm rounded hover:bg-gray-50 disabled:opacity-50"
-                    >
-                      {testingSiteId === site.id ? "Testing..." : "Test Connections"}
-                    </button>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => startEdit(site)}
+                        className="theme-button theme-button--ghost px-3 py-1.5 text-sm"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => runConnectionTests(site.id)}
+                        disabled={testingSiteId === site.id}
+                        className="theme-button theme-button--ghost px-3 py-1.5 text-sm disabled:opacity-50"
+                      >
+                        {testingSiteId === site.id ? "Testing..." : "Test Connections"}
+                      </button>
+                    </div>
                   </div>
                   <div className="grid sm:grid-cols-2 gap-3 mt-4 text-sm">
                     <div>
-                      <div className="text-gray-500">WordPress URL</div>
+                      <div className="theme-text-muted">WordPress URL</div>
                       <div className="break-all">{site.wordpressUrl || "Not set"}</div>
                     </div>
                     <div>
-                      <div className="text-gray-500">Login URL</div>
+                      <div className="theme-text-muted">Login URL</div>
                       <div className="break-all">{site.accountLoginUrl || "Not set"}</div>
                     </div>
                     <div>
-                      <div className="text-gray-500">ProfileGrid API</div>
+                      <div className="theme-text-muted">ProfileGrid API</div>
                       <div className="break-all">{site.profilegridApiUrl || "Not set"}</div>
                     </div>
                     <div>
-                      <div className="text-gray-500">Support Email</div>
+                      <div className="theme-text-muted">Support Email</div>
                       <div>{site.supportEmail || "Not set"}</div>
                     </div>
                     <div>
-                      <div className="text-gray-500">Branding Asset</div>
+                      <div className="theme-text-muted">Branding Asset</div>
                       <div className="break-all">{site.emailFooterImageUrl || "Not found"}</div>
                     </div>
                     <div>
-                      <div className="text-gray-500">Credentials Configured</div>
+                      <div className="theme-text-muted">Credentials Configured</div>
                       <div>{secretSummary(site)}</div>
                     </div>
                     <div>
-                      <div className="text-gray-500">Sync Workflow ID</div>
+                      <div className="theme-text-muted">Sync Workflow ID</div>
                       <div className="break-all">{site.n8nSyncWorkflowId || "Not linked yet"}</div>
                     </div>
                     <div>
-                      <div className="text-gray-500">Reminder Workflow ID</div>
-                      <div className="break-all">{site.n8nReminderWorkflowId || "Not linked yet"}</div>
+                      <div className="theme-text-muted">Reminder Workflow ID</div>
+                      <div className="break-all">
+                        {site.n8nReminderWorkflowId || "Not linked yet"}
+                      </div>
                     </div>
                   </div>
                   {connectionResults[site.id] && (
-                    <div className="mt-4 rounded border border-gray-200 bg-gray-50 p-3 text-sm">
+                    <div
+                      className="mt-4 rounded border p-3 text-sm"
+                      style={{
+                        borderColor: "var(--border)",
+                        background: "var(--panel-muted)",
+                      }}
+                    >
                       <div className="font-medium mb-2">Latest Connection Test</div>
                       {Object.entries(connectionResults[site.id]).map(([key, result]) => (
                         <div key={key} className="mb-1 last:mb-0">
@@ -426,12 +427,12 @@ export default function SitesPage() {
           )}
         </section>
 
-        <section className="bg-white rounded-lg border border-gray-200">
-          <div className="px-5 py-4 border-b border-gray-200">
+        <section className="theme-card">
+          <div className="px-5 py-4 border-b" style={{ borderColor: "var(--border)" }}>
             <h2 className="font-semibold">
               {editingSiteId !== null ? "Edit Site" : "Add New Site"}
             </h2>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm theme-text-muted mt-1">
               Start with the website basics. The app will derive the WordPress/ProfileGrid URLs and
               try to pull branding metadata from the site automatically.
             </p>
@@ -439,21 +440,21 @@ export default function SitesPage() {
           <form onSubmit={handleSubmit} className="p-5 space-y-4">
             <div className="grid sm:grid-cols-2 gap-4">
               <label className="text-sm">
-                <div className="text-gray-600 mb-1">Site Name</div>
+                <div className="theme-text-muted mb-1">Site Name</div>
                 <input
                   value={form.name}
                   onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  className="theme-input px-3 py-2"
                   required
                 />
               </label>
               <label className="text-sm">
-                <div className="text-gray-600 mb-1">Site URL</div>
+                <div className="theme-text-muted mb-1">Site URL</div>
                 <input
                   value={form.siteUrl}
                   onChange={(e) => setForm((prev) => ({ ...prev, siteUrl: e.target.value }))}
                   placeholder="https://example.com"
-                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  className="theme-input px-3 py-2"
                   required
                 />
               </label>
@@ -461,7 +462,7 @@ export default function SitesPage() {
 
             <div className="grid sm:grid-cols-2 gap-4">
               <label className="text-sm">
-                <div className="text-gray-600 mb-1">Slug</div>
+                <div className="theme-text-muted mb-1">Slug</div>
                 <input
                   value={slugTouched ? form.slug : derived.slug}
                   onChange={(e) => {
@@ -469,47 +470,47 @@ export default function SitesPage() {
                     setForm((prev) => ({ ...prev, slug: e.target.value }));
                   }}
                   placeholder="auto-generated from site name"
-                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  className="theme-input px-3 py-2"
                 />
               </label>
               <label className="text-sm">
-                <div className="text-gray-600 mb-1">Support Email</div>
+                <div className="theme-text-muted mb-1">Support Email</div>
                 <input
                   value={form.supportEmail}
                   onChange={(e) => setForm((prev) => ({ ...prev, supportEmail: e.target.value }))}
                   placeholder="Optional"
-                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  className="theme-input px-3 py-2"
                 />
               </label>
             </div>
 
             <div className="grid sm:grid-cols-2 gap-4">
               <label className="text-sm">
-                <div className="text-gray-600 mb-1">WordPress Username</div>
+                <div className="theme-text-muted mb-1">WordPress Username</div>
                 <input
                   value={form.wordpressUsername}
                   onChange={(e) =>
                     setForm((prev) => ({ ...prev, wordpressUsername: e.target.value }))
                   }
-                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  className="theme-input px-3 py-2"
                   required
                 />
               </label>
               <label className="text-sm">
-                <div className="text-gray-600 mb-1">WordPress App Password</div>
+                <div className="theme-text-muted mb-1">WordPress App Password</div>
                 <input
                   type="password"
                   value={form.wordpressAppPassword}
                   onChange={(e) =>
                     setForm((prev) => ({ ...prev, wordpressAppPassword: e.target.value }))
                   }
-                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  className="theme-input px-3 py-2"
                   required
                 />
               </label>
             </div>
 
-            <div className="rounded border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+            <div className="theme-alert theme-alert--info">
               <div className="font-medium mb-2">Derived from Site URL</div>
               <div>WordPress URL: {derived.wordpressUrl || "Enter a site URL"}</div>
               <div>WP REST API: {derived.wordpressRestApiUrl || "Enter a site URL"}</div>
@@ -517,93 +518,96 @@ export default function SitesPage() {
               <div>Account Login URL: {derived.accountLoginUrl || "Enter a site URL"}</div>
             </div>
 
-            <details className="rounded border border-gray-200">
-              <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-gray-700">
+            <details className="rounded border" style={{ borderColor: "var(--border)" }}>
+              <summary className="cursor-pointer px-4 py-3 text-sm font-medium">
                 Advanced Overrides
               </summary>
-              <div className="px-4 pb-4 space-y-4 border-t border-gray-200">
+              <div
+                className="px-4 pb-4 space-y-4 border-t"
+                style={{ borderColor: "var(--border)" }}
+              >
                 <div className="grid sm:grid-cols-2 gap-4 pt-4">
                   <label className="text-sm">
-                    <div className="text-gray-600 mb-1">Account Login URL Override</div>
+                    <div className="theme-text-muted mb-1">Account Login URL Override</div>
                     <input
                       value={form.accountLoginUrl}
                       onChange={(e) =>
                         setForm((prev) => ({ ...prev, accountLoginUrl: e.target.value }))
                       }
-                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      className="theme-input px-3 py-2"
                     />
                   </label>
                 </div>
 
                 <div className="grid sm:grid-cols-2 gap-4">
                   <label className="text-sm">
-                    <div className="text-gray-600 mb-1">SMTP Host</div>
+                    <div className="theme-text-muted mb-1">SMTP Host</div>
                     <input
                       value={form.smtpHost}
                       onChange={(e) => setForm((prev) => ({ ...prev, smtpHost: e.target.value }))}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      className="theme-input px-3 py-2"
                     />
                   </label>
                   <label className="text-sm">
-                    <div className="text-gray-600 mb-1">SMTP Port</div>
+                    <div className="theme-text-muted mb-1">SMTP Port</div>
                     <input
                       value={form.smtpPort}
                       onChange={(e) => setForm((prev) => ({ ...prev, smtpPort: e.target.value }))}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      className="theme-input px-3 py-2"
                     />
                   </label>
                 </div>
 
                 <div className="grid sm:grid-cols-2 gap-4">
                   <label className="text-sm">
-                    <div className="text-gray-600 mb-1">SMTP Username</div>
+                    <div className="theme-text-muted mb-1">SMTP Username</div>
                     <input
                       value={form.smtpUsername}
                       onChange={(e) =>
                         setForm((prev) => ({ ...prev, smtpUsername: e.target.value }))
                       }
-                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      className="theme-input px-3 py-2"
                     />
                   </label>
                   <label className="text-sm">
-                    <div className="text-gray-600 mb-1">SMTP Password</div>
+                    <div className="theme-text-muted mb-1">SMTP Password</div>
                     <input
                       type="password"
                       value={form.smtpPassword}
                       onChange={(e) =>
                         setForm((prev) => ({ ...prev, smtpPassword: e.target.value }))
                       }
-                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      className="theme-input px-3 py-2"
                     />
                   </label>
                 </div>
 
                 <div className="grid sm:grid-cols-2 gap-4">
                   <label className="text-sm">
-                    <div className="text-gray-600 mb-1">SMTP From Email</div>
+                    <div className="theme-text-muted mb-1">SMTP From Email</div>
                     <input
                       value={form.smtpFromEmail}
                       onChange={(e) =>
                         setForm((prev) => ({ ...prev, smtpFromEmail: e.target.value }))
                       }
-                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      className="theme-input px-3 py-2"
                     />
                   </label>
                   <label className="text-sm">
-                    <div className="text-gray-600 mb-1">SMTP From Name</div>
+                    <div className="theme-text-muted mb-1">SMTP From Name</div>
                     <input
                       value={form.smtpFromName}
                       onChange={(e) =>
                         setForm((prev) => ({ ...prev, smtpFromName: e.target.value }))
                       }
-                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      className="theme-input px-3 py-2"
                     />
                   </label>
                 </div>
 
                 <div className="grid sm:grid-cols-2 gap-4">
                   <label className="text-sm">
-                    <div className="text-gray-600 mb-1">SMTP Secure</div>
+                    <div className="theme-text-muted mb-1">SMTP Secure</div>
                     <select
                       value={form.smtpSecure ? "true" : "false"}
                       onChange={(e) =>
@@ -612,14 +616,14 @@ export default function SitesPage() {
                           smtpSecure: e.target.value === "true",
                         }))
                       }
-                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      className="theme-select px-3 py-2"
                     >
                       <option value="true">true</option>
                       <option value="false">false</option>
                     </select>
                   </label>
                   <label className="text-sm">
-                    <div className="text-gray-600 mb-1">Footer Image URL Override</div>
+                    <div className="theme-text-muted mb-1">Footer Image URL Override</div>
                     <input
                       value={form.emailFooterImageUrl}
                       onChange={(e) =>
@@ -628,7 +632,7 @@ export default function SitesPage() {
                           emailFooterImageUrl: e.target.value,
                         }))
                       }
-                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      className="theme-input px-3 py-2"
                     />
                   </label>
                 </div>
@@ -638,7 +642,7 @@ export default function SitesPage() {
                     type="button"
                     onClick={runDraftSmtpTest}
                     disabled={testingDraftSmtp}
-                    className="px-4 py-2 bg-white border border-gray-300 text-sm rounded hover:bg-gray-50 disabled:opacity-50"
+                    className="theme-button theme-button--ghost px-4 py-2 text-sm disabled:opacity-50"
                   >
                     {testingDraftSmtp ? "Testing SMTP..." : "Test SMTP Before Save"}
                   </button>
@@ -649,7 +653,7 @@ export default function SitesPage() {
             <button
               type="submit"
               disabled={saving}
-              className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+              className="theme-button theme-button--primary w-full px-4 py-2 disabled:opacity-50"
             >
               {saving
                 ? editingSiteId !== null
@@ -663,7 +667,7 @@ export default function SitesPage() {
               <button
                 type="button"
                 onClick={cancelEdit}
-                className="w-full px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50"
+                className="theme-button theme-button--ghost w-full px-4 py-2"
               >
                 Cancel Edit
               </button>

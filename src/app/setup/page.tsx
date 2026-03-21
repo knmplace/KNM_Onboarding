@@ -9,12 +9,10 @@ type SetupStatus = {
 
 type Step = "pin" | "credentials" | "complete";
 
-// Field metadata: label, helper text, optional flag, group
 const FIELD_META: Record<
   string,
   { label: string; help: string; optional?: boolean; group: "app" | "site" | "smtp" }
 > = {
-  // ── App-level settings ────────────────────────────────────────────────────
   SUPPORT_EMAIL: {
     label: "Support Email Address",
     help: "The email address shown to users when they need help (e.g. support@yourdomain.com).",
@@ -22,7 +20,7 @@ const FIELD_META: Record<
   },
   ACCOUNT_LOGIN_URL: {
     label: "Account Login URL",
-    help: "The login URL shown to users in onboarding emails — typically your WordPress site's login page (e.g. https://yoursite.com/wp-login.php).",
+    help: "The login URL shown to users in onboarding emails - typically your WordPress site's login page (e.g. https://yoursite.com/wp-login.php).",
     group: "app",
   },
   N8N_URL: {
@@ -33,7 +31,7 @@ const FIELD_META: Record<
   },
   N8N_API_KEY: {
     label: "n8n API Key",
-    help: "API key from your n8n instance. In n8n: Settings → API Keys → Create. Required if n8n URL is set.",
+    help: "API key from your n8n instance. In n8n: Settings -> API Keys -> Create. Required if n8n URL is set.",
     optional: true,
     group: "app",
   },
@@ -43,7 +41,6 @@ const FIELD_META: Record<
     optional: true,
     group: "app",
   },
-  // ── First WordPress site connection ───────────────────────────────────────
   WORDPRESS_URL: {
     label: "WordPress Site URL",
     help: "The URL of your WordPress site (e.g. https://yoursite.com). This is the first site ADOB will manage.",
@@ -56,10 +53,9 @@ const FIELD_META: Record<
   },
   WORDPRESS_APP_PASSWORD: {
     label: "WordPress Application Password",
-    help: "An Application Password (not your login password). Create one in WordPress: Users → Your Profile → Application Passwords → Add New.",
+    help: "An Application Password (not your login password). Create one in WordPress: Users -> Your Profile -> Application Passwords -> Add New.",
     group: "site",
   },
-  // ── Email sending (SMTP) ──────────────────────────────────────────────────
   SMTP_HOST: {
     label: "SMTP Host",
     help: "Your outgoing mail server hostname (e.g. smtp.gmail.com or mail.yourdomain.com).",
@@ -67,7 +63,7 @@ const FIELD_META: Record<
   },
   SMTP_USERNAME: {
     label: "SMTP Username",
-    help: "Your SMTP account username — usually your full email address.",
+    help: "Your SMTP account username - usually your full email address.",
     group: "smtp",
   },
   SMTP_PASSWORD: {
@@ -201,7 +197,6 @@ export default function SetupPage() {
     }, 3000);
   }
 
-  // Group missing fields by their category
   const fieldsByGroup: Record<string, string[]> = { app: [], site: [], smtp: [] };
   missingFields.forEach((f) => {
     const group = FIELD_META[f]?.group ?? "app";
@@ -212,79 +207,84 @@ export default function SetupPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 w-full max-w-lg p-8">
+    <div
+      className="min-h-screen flex items-center justify-center p-4"
+      style={{ background: "var(--bg)" }}
+    >
+      <div className="theme-card w-full max-w-lg p-8">
         <div className="mb-6 text-center">
-          <h1 className="text-2xl font-bold text-gray-900">ADOB Setup</h1>
-          <p className="text-sm text-gray-500 mt-1">First-run configuration wizard</p>
+          <h1 className="text-2xl font-bold">ADOB Setup</h1>
+          <p className="text-sm theme-text-muted mt-1">First-run configuration wizard</p>
         </div>
 
-        {/* Step indicator */}
-        <div className="flex items-center justify-center gap-2 mb-8 text-xs text-gray-400">
+        <div className="flex items-center justify-center gap-2 mb-8 text-xs theme-text-soft">
           <span className={step === "pin" ? "font-semibold text-blue-600" : ""}>1. Verify</span>
-          <span>→</span>
+          <span aria-hidden="true">{"->"}</span>
           <span className={step === "credentials" ? "font-semibold text-blue-600" : ""}>
             2. Configure
           </span>
-          <span>→</span>
+          <span aria-hidden="true">{"->"}</span>
           <span className={step === "complete" ? "font-semibold text-blue-600" : ""}>
             3. Launch
           </span>
         </div>
 
-        {/* ── Step 1: PIN ─────────────────────────────────────────────────── */}
         {step === "pin" && (
           <form onSubmit={handlePinSubmit} className="space-y-4">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm theme-text-muted">
               Enter the Setup PIN you chose during{" "}
-              <code className="bg-gray-100 px-1 rounded text-xs">deploy.sh</code> installation.
+              <code
+                className="px-1 rounded text-xs"
+                style={{ background: "var(--panel-strong)" }}
+              >
+                deploy.sh
+              </code>{" "}
+              installation.
             </p>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Setup PIN</label>
+              <label className="block text-sm font-medium theme-text-muted mb-1">Setup PIN</label>
               <input
                 type="password"
                 value={pin}
                 onChange={(e) => setPin(e.target.value)}
                 placeholder="Enter your setup PIN"
                 disabled={pinLocked}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="theme-input px-3 py-2 text-sm"
                 autoFocus
               />
             </div>
-            {pinError && <p className="text-sm text-red-600">{pinError}</p>}
+            {pinError && <p className="text-sm" style={{ color: "var(--danger-text)" }}>{pinError}</p>}
             <button
               type="submit"
               disabled={pin.length < 6 || pinLocked}
-              className="w-full bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="theme-button theme-button--primary w-full py-2 disabled:opacity-50"
             >
               Verify PIN
             </button>
           </form>
         )}
 
-        {/* ── Step 2: Credentials ──────────────────────────────────────────── */}
         {step === "credentials" && (
           <form onSubmit={handleCredentialsSubmit} className="space-y-6">
             {missingFields.length === 0 ? (
-              <p className="text-sm text-gray-600">
+              <p className="text-sm theme-text-muted">
                 All credentials are already configured. Click Save &amp; Continue to proceed.
               </p>
             ) : (
-              <p className="text-sm text-gray-600">
+              <p className="text-sm theme-text-muted">
                 Fill in the details below to complete your ADOB installation. Fields marked{" "}
-                <span className="text-gray-400 text-xs">(optional)</span> can be left blank and
+                <span className="theme-text-soft text-xs">(optional)</span> can be left blank and
                 configured later.
               </p>
             )}
 
             {activeGroups.map((group) => (
               <div key={group} className="space-y-4">
-                {/* Group heading */}
-                <div className="border-t border-gray-100 pt-4">
-                  <h2 className="text-sm font-semibold text-gray-800">
-                    {GROUP_LABELS[group].title}
-                  </h2>
-                  <p className="text-xs text-gray-500 mt-0.5">{GROUP_LABELS[group].description}</p>
+                <div className="border-t pt-4" style={{ borderColor: "var(--border)" }}>
+                  <h2 className="text-sm font-semibold">{GROUP_LABELS[group].title}</h2>
+                  <p className="text-xs theme-text-muted mt-0.5">
+                    {GROUP_LABELS[group].description}
+                  </p>
                 </div>
 
                 {fieldsByGroup[group].map((field) => {
@@ -294,15 +294,15 @@ export default function SetupPage() {
                   const optional = meta?.optional;
                   return (
                     <div key={field}>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium theme-text-muted mb-1">
                         {label}
                         {optional && (
-                          <span className="ml-1.5 text-xs font-normal text-gray-400">
+                          <span className="ml-1.5 text-xs font-normal theme-text-soft">
                             (optional)
                           </span>
                         )}
                       </label>
-                      {help && <p className="text-xs text-gray-500 mb-1.5">{help}</p>}
+                      {help && <p className="text-xs theme-text-muted mb-1.5">{help}</p>}
                       <input
                         type={PASSWORD_FIELDS.has(field) ? "password" : "text"}
                         value={credentials[field] || ""}
@@ -310,7 +310,7 @@ export default function SetupPage() {
                           setCredentials((prev) => ({ ...prev, [field]: e.target.value }))
                         }
                         placeholder={optional ? "Leave blank to configure later" : ""}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="theme-input px-3 py-2 text-sm"
                       />
                     </div>
                   );
@@ -318,38 +318,41 @@ export default function SetupPage() {
               </div>
             ))}
 
-            {saveError && <p className="text-sm text-red-600">{saveError}</p>}
+            {saveError && (
+              <p className="text-sm" style={{ color: "var(--danger-text)" }}>
+                {saveError}
+              </p>
+            )}
             <button
               type="submit"
               disabled={saving}
-              className="w-full bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
+              className="theme-button theme-button--primary w-full py-2 disabled:opacity-50"
             >
-              {saving ? "Saving…" : "Save & Continue"}
+              {saving ? "Saving..." : "Save & Continue"}
             </button>
           </form>
         )}
 
-        {/* ── Step 3: Complete ─────────────────────────────────────────────── */}
         {step === "complete" && (
           <div className="space-y-4 text-center">
             <div className="text-4xl text-green-600">✓</div>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm theme-text-muted">
               Credentials saved. The app will now restart to apply the configuration. This takes
               about 30 seconds.
             </p>
             {restarting ? (
-              <div className="text-sm text-gray-500 animate-pulse">
-                Restarting… waiting for app to come back up…
+              <div className="text-sm theme-text-muted animate-pulse">
+                Restarting... waiting for app to come back up...
               </div>
             ) : (
               <button
                 onClick={handleRestart}
-                className="w-full bg-green-600 text-white py-2 rounded-lg font-medium hover:bg-green-700"
+                className="theme-button theme-button--success w-full py-2"
               >
                 Restart & Launch ADOB
               </button>
             )}
-            <p className="text-xs text-gray-400">
+            <p className="text-xs theme-text-soft">
               After restart you will be redirected to the login page. Log in with your WordPress
               admin username and the Application Password you entered above.
             </p>

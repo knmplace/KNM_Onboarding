@@ -6,6 +6,7 @@ import { FunnelStats } from "@/components/funnel-stats";
 import { UsersTable, OnboardingUser } from "@/components/users-table";
 import { UserDetailPanel } from "@/components/user-detail-panel";
 import { GuideGeneratorModal } from "@/components/guide-generator-modal";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { APP_VERSION } from "@/lib/version";
 
 type StepFilter = "all" | "pending_approval" | "awaiting_password_change" | "completed";
@@ -34,9 +35,7 @@ export default function Dashboard() {
   const [searchScope, setSearchScope] = useState<SearchScope>("current");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [selectedForBreachScan, setSelectedForBreachScan] = useState<number[]>(
-    []
-  );
+  const [selectedForBreachScan, setSelectedForBreachScan] = useState<number[]>([]);
   const [showGuideModal, setShowGuideModal] = useState(false);
 
   const fetchSites = useCallback(async () => {
@@ -52,8 +51,7 @@ export default function Dashboard() {
         if (current && nextSites.some((site: SiteOption) => site.id === current)) {
           return current;
         }
-        const defaultSite =
-          nextSites[0]; // First site is the default
+        const defaultSite = nextSites[0];
         return defaultSite?.id ?? null;
       });
     } catch (e) {
@@ -324,18 +322,23 @@ export default function Dashboard() {
   };
 
   return (
-    <main className="max-w-6xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-6">
+    <main className="page-shell">
+      <div className="flex items-center justify-between mb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Onboarding Dashboard <span className="text-xs font-normal text-gray-400 align-middle ml-2">v{APP_VERSION}</span></h1>
-          <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-bold">
+            Onboarding Dashboard
+            <span className="text-xs font-normal theme-text-soft align-middle ml-2">
+              v{APP_VERSION}
+            </span>
+          </h1>
+          <div className="flex items-center gap-2 text-sm theme-text-muted mt-1 flex-wrap">
             <label htmlFor="site-select">Selected site:</label>
             <select
               id="site-select"
               value={selectedSiteId ?? ""}
               onChange={(e) => setSelectedSiteId(Number.parseInt(e.target.value, 10))}
               disabled={sitesLoading || sites.length === 0}
-              className="text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-700"
+              className="theme-select text-sm px-2 py-1"
             >
               {sites.length === 0 ? (
                 <option value="">No sites configured</option>
@@ -354,37 +357,38 @@ export default function Dashboard() {
             )}
           </div>
         </div>
-        <div className="flex gap-2">
+
+        <div className="flex gap-2 items-center flex-wrap justify-end">
           <button
             onClick={handleLogout}
-            className="px-3 py-1.5 bg-white border border-gray-300 text-sm rounded hover:bg-gray-50"
+            className="theme-button theme-button--ghost px-3 py-1.5 text-sm"
           >
             Logout
           </button>
           <button
             onClick={handleSync}
             disabled={syncing}
-            className="px-3 py-1.5 bg-white border border-gray-300 text-sm rounded hover:bg-gray-50 disabled:opacity-50"
+            className="theme-button theme-button--ghost px-3 py-1.5 text-sm disabled:opacity-50"
           >
             {syncing ? "Syncing..." : "Sync Users"}
           </button>
           <button
             onClick={handleFullSync}
             disabled={syncing}
-            className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50"
+            className="theme-button theme-button--primary px-3 py-1.5 text-sm disabled:opacity-50"
           >
             {syncing ? "Syncing..." : "Full Sync"}
           </button>
           <button
             onClick={() => setShowGuideModal(true)}
-            className="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700"
+            className="theme-button theme-button--indigo px-3 py-1.5 text-sm"
           >
             Generate Guide
           </button>
           <button
             onClick={handleRunBreachScan}
             disabled={runningBreachScan}
-            className="px-3 py-1.5 bg-amber-600 text-white text-sm rounded hover:bg-amber-700 disabled:opacity-50"
+            className="theme-button theme-button--warning px-3 py-1.5 text-sm disabled:opacity-50"
           >
             {runningBreachScan
               ? "Running..."
@@ -394,40 +398,32 @@ export default function Dashboard() {
           </button>
           <Link
             href={selectedSiteId ? `/deleted?siteId=${selectedSiteId}` : "/deleted"}
-            className="px-3 py-1.5 bg-white border border-gray-300 text-sm rounded hover:bg-gray-50 text-red-600"
+            className="theme-button theme-button--ghost px-3 py-1.5 text-sm text-red-600"
           >
             Deleted Users
           </Link>
           <Link
             href="/sites"
-            className="px-3 py-1.5 bg-white border border-gray-300 text-sm rounded hover:bg-gray-50"
+            className="theme-button theme-button--ghost px-3 py-1.5 text-sm"
           >
             Sites
           </Link>
+          <ThemeToggle />
         </div>
       </div>
 
-      {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded">
-          {error}
-        </div>
-      )}
-      {notice && (
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 text-sm rounded">
-          {notice}
-        </div>
-      )}
+      {error && <div className="theme-alert theme-alert--error">{error}</div>}
+      {notice && <div className="theme-alert theme-alert--success">{notice}</div>}
 
       <FunnelStats counts={counts} />
 
-      {/* Filters */}
-      <div className="flex gap-4 mb-4">
+      <div className="flex gap-4 mb-4 flex-wrap">
         <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-500">Step:</label>
+          <label className="text-sm theme-text-muted">Step:</label>
           <select
             value={stepFilter}
             onChange={(e) => setStepFilter(e.target.value as StepFilter)}
-            className="text-sm border border-gray-300 rounded px-2 py-1"
+            className="theme-select text-sm px-2 py-1"
           >
             <option value="all">All</option>
             <option value="pending_approval">Pending Approval</option>
@@ -436,62 +432,59 @@ export default function Dashboard() {
           </select>
         </div>
         <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-500">Breached:</label>
+          <label className="text-sm theme-text-muted">Breached:</label>
           <select
             value={breachFilter}
             onChange={(e) => setBreachFilter(e.target.value as BreachFilter)}
-            className="text-sm border border-gray-300 rounded px-2 py-1"
+            className="theme-select text-sm px-2 py-1"
           >
             <option value="all">All</option>
             <option value="true">Breached</option>
             <option value="false">Clean</option>
           </select>
         </div>
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-500">Search:</label>
+        <div className="flex items-center gap-2 flex-wrap">
+          <label className="text-sm theme-text-muted">Search:</label>
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Name, email, or WP ID"
-            className="text-sm border border-gray-300 rounded px-2 py-1 w-56"
+            className="theme-input text-sm px-2 py-1 w-56"
           />
           <select
             value={searchScope}
             onChange={(e) => setSearchScope(e.target.value as SearchScope)}
             disabled={searchTerm.trim().length === 0}
-            className="text-sm border border-gray-300 rounded px-2 py-1"
+            className="theme-select text-sm px-2 py-1"
           >
             <option value="current">Current Site</option>
             <option value="all">All Sites</option>
           </select>
         </div>
       </div>
-      <div className="flex items-center gap-3 mb-3 text-sm text-gray-600">
+
+      <div className="flex items-center gap-3 mb-3 text-sm theme-text-muted">
         <span>
-          Selected for breach recheck:{" "}
-          <strong>{selectedForBreachScan.length}</strong>
+          Selected for breach recheck: <strong>{selectedForBreachScan.length}</strong>
         </span>
         {selectedForBreachScan.length > 0 && (
           <button
             onClick={() => setSelectedForBreachScan([])}
-            className="text-blue-600 hover:underline"
+            className="theme-link hover:underline"
           >
             Clear selection
           </button>
         )}
       </div>
 
-      {/* Users Table */}
-      <div className="bg-white rounded-lg border border-gray-200">
+      <div className="theme-card">
         {sitesLoading ? (
-          <div className="text-center py-12 text-gray-400">Loading sites...</div>
+          <div className="theme-empty">Loading sites...</div>
         ) : !selectedSite ? (
-          <div className="text-center py-12 text-gray-400">
-            No active site selected. Add a site to get started.
-          </div>
+          <div className="theme-empty">No active site selected. Add a site to get started.</div>
         ) : loading ? (
-          <div className="text-center py-12 text-gray-400">Loading...</div>
+          <div className="theme-empty">Loading...</div>
         ) : (
           <UsersTable
             users={users}
@@ -504,7 +497,6 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Detail Panel */}
       {selectedUser && (
         <UserDetailPanel
           user={selectedUser}
@@ -516,7 +508,6 @@ export default function Dashboard() {
         />
       )}
 
-      {/* Guide Generator Modal */}
       {showGuideModal && (
         <GuideGeneratorModal onClose={() => setShowGuideModal(false)} />
       )}

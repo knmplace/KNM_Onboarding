@@ -114,7 +114,7 @@ export function UsersTable({
 }: UsersTableProps) {
   if (users.length === 0) {
     return (
-      <div className="text-center py-12 text-gray-400">
+      <div className="theme-empty">
         No users found. Sync from ProfileGrid to get started.
       </div>
     );
@@ -124,10 +124,10 @@ export function UsersTable({
     users.length > 0 && users.every((user) => selectedUserIds.includes(user.id));
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+    <div className="theme-table-wrap">
+      <table className="theme-table">
         <thead>
-          <tr className="border-b border-gray-200 text-left text-gray-500">
+          <tr>
             <th className="py-2 px-3 font-medium">
               <input
                 type="checkbox"
@@ -150,7 +150,7 @@ export function UsersTable({
             <tr
               key={user.id}
               onClick={() => onSelectUser(user)}
-              className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+              className="cursor-pointer"
             >
               <td className="py-2 px-3" onClick={(e) => e.stopPropagation()}>
                 <input
@@ -167,9 +167,9 @@ export function UsersTable({
                   `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
                   "—"}
               </td>
-              <td className="py-2 px-3 text-gray-600">{user.email}</td>
+              <td className="py-2 px-3 theme-text-muted">{user.email}</td>
               {showSiteColumn && (
-                <td className="py-2 px-3 text-gray-600">
+                <td className="py-2 px-3 theme-text-muted">
                   {user.site?.name || user.site?.slug || "Unknown"}
                 </td>
               )}
@@ -186,7 +186,7 @@ export function UsersTable({
                   {user.rmUserStatus === 0 ? "Active" : "Inactive"}
                 </span>
               </td>
-              <td className="py-2 px-3 text-gray-400 text-xs">
+              <td className="py-2 px-3 theme-text-soft text-xs">
                 {new Date(user.createdAt).toLocaleDateString()}
               </td>
             </tr>

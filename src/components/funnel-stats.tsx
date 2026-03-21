@@ -30,8 +30,8 @@ export function FunnelStats({ counts }: FunnelStatsProps) {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
-      <div className="rounded-lg border border-gray-200 bg-white p-4">
-        <p className="text-sm text-gray-500">Total Users</p>
+      <div className="theme-card p-4">
+        <p className="text-sm theme-text-muted">Total Users</p>
         <p className="text-2xl font-bold">{counts.total}</p>
       </div>
       {steps.map((step) => (

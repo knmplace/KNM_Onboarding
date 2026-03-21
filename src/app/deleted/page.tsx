@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { OnboardingUser } from "@/components/users-table";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 type SiteOption = {
   id: number;
@@ -34,8 +35,7 @@ export default function DeletedUsersPage() {
         if (current && nextSites.some((site: SiteOption) => site.id === current)) {
           return current;
         }
-        const defaultSite =
-          nextSites[0]; // First site is the default
+        const defaultSite = nextSites[0];
         return defaultSite?.id ?? null;
       });
     } catch (e) {
@@ -126,47 +126,41 @@ export default function DeletedUsersPage() {
   const selectedSite = sites.find((site) => site.id === selectedSiteId) ?? null;
 
   return (
-    <main className="max-w-6xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <Link
-            href="/"
-            className="text-sm text-blue-600 hover:text-blue-800"
-          >
+    <main className="page-shell">
+      <div className="flex items-center justify-between mb-6 gap-4">
+        <div className="flex items-center gap-4 flex-wrap">
+          <Link href="/" className="text-sm theme-link hover:underline">
             &larr; Dashboard
           </Link>
           <h1 className="text-2xl font-bold">Deleted Users</h1>
-          <span className="text-sm text-gray-500">
+          <span className="text-sm theme-text-muted">
             Users removed from WordPress/ProfileGrid
           </span>
         </div>
-        {selected.size > 0 && (
-          <button
-            onClick={handleDelete}
-            disabled={deleting}
-            className="px-3 py-1.5 bg-red-600 text-white text-sm rounded hover:bg-red-700 disabled:opacity-50"
-          >
-            {deleting
-              ? "Deleting..."
-              : `Delete Selected (${selected.size})`}
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {selected.size > 0 && (
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="theme-button theme-button--danger px-3 py-1.5 text-sm disabled:opacity-50"
+            >
+              {deleting ? "Deleting..." : `Delete Selected (${selected.size})`}
+            </button>
+          )}
+          <ThemeToggle />
+        </div>
       </div>
 
-      {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded">
-          {error}
-        </div>
-      )}
+      {error && <div className="theme-alert theme-alert--error">{error}</div>}
 
-      <div className="mb-4 flex items-center gap-3 text-sm text-gray-600">
+      <div className="mb-4 flex items-center gap-3 text-sm theme-text-muted flex-wrap">
         <label htmlFor="deleted-site-select">Selected site:</label>
         <select
           id="deleted-site-select"
           value={selectedSiteId ?? ""}
           onChange={(e) => setSelectedSiteId(Number.parseInt(e.target.value, 10))}
           disabled={sitesLoading || sites.length === 0}
-          className="text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-700"
+          className="theme-select text-sm px-2 py-1"
         >
           {sites.length === 0 ? (
             <option value="">No sites configured</option>
@@ -185,24 +179,20 @@ export default function DeletedUsersPage() {
         )}
       </div>
 
-      <div className="bg-white rounded-lg border border-gray-200">
+      <div className="theme-card">
         {sitesLoading ? (
-          <div className="text-center py-12 text-gray-400">Loading sites...</div>
+          <div className="theme-empty">Loading sites...</div>
         ) : !selectedSite ? (
-          <div className="text-center py-12 text-gray-400">
-            No active site selected.
-          </div>
+          <div className="theme-empty">No active site selected.</div>
         ) : loading ? (
-          <div className="text-center py-12 text-gray-400">Loading...</div>
+          <div className="theme-empty">Loading...</div>
         ) : users.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">
-            No deleted users found for {selectedSite.name}.
-          </div>
+          <div className="theme-empty">No deleted users found for {selectedSite.name}.</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="theme-table-wrap">
+            <table className="theme-table">
               <thead>
-                <tr className="border-b border-gray-200 text-left text-gray-500">
+                <tr>
                   <th className="py-2 px-3 font-medium">
                     <input
                       type="checkbox"
@@ -223,9 +213,7 @@ export default function DeletedUsersPage() {
                 {users.map((user) => (
                   <tr
                     key={user.id}
-                    className={`border-b border-gray-100 hover:bg-gray-50 ${
-                      selected.has(user.id) ? "bg-red-50" : ""
-                    }`}
+                    className={selected.has(user.id) ? "bg-red-50/70" : ""}
                   >
                     <td className="py-2 px-3">
                       <input
@@ -240,19 +228,19 @@ export default function DeletedUsersPage() {
                         `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
                         "—"}
                     </td>
-                    <td className="py-2 px-3 text-gray-600">{user.email}</td>
-                    <td className="py-2 px-3 text-gray-400">{user.wordpressId}</td>
+                    <td className="py-2 px-3 theme-text-muted">{user.email}</td>
+                    <td className="py-2 px-3 theme-text-soft">{user.wordpressId}</td>
                     <td className="py-2 px-3">
                       <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
                         {user.onboardingStep.replace(/_/g, " ")}
                       </span>
                     </td>
-                    <td className="py-2 px-3 text-gray-400 text-xs">
+                    <td className="py-2 px-3 theme-text-soft text-xs">
                       {user.deletedAt
                         ? new Date(user.deletedAt).toLocaleString()
                         : "—"}
                     </td>
-                    <td className="py-2 px-3 text-gray-400 text-xs">
+                    <td className="py-2 px-3 theme-text-soft text-xs">
                       {new Date(user.createdAt).toLocaleDateString()}
                     </td>
                   </tr>
