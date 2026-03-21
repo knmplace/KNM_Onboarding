@@ -88,7 +88,7 @@ export async function POST(
     }
 
     try {
-      const mailerConfig = getMailerConfigForSite(site);
+      const mailerConfig = await getMailerConfigForSite(site);
       await verifyMailer(mailerConfig);
       results.smtp = {
         ok: true,
