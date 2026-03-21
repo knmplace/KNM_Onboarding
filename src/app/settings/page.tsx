@@ -137,7 +137,7 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to save.");
-      setNotice("App SMTP saved. Restart the app for changes to take effect.");
+      setNotice("App SMTP saved. Changes will take effect on next app restart (or automatically on next deployment).");
       if (appSmtpPassword) { setAppSmtp((p) => ({ ...p, smtpPasswordSet: true })); setAppSmtpPassword(""); }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save.");
@@ -292,9 +292,10 @@ export default function SettingsPage() {
       <section className="theme-card p-6 mb-8 max-w-2xl">
         <h2 className="font-semibold mb-1">App Default SMTP</h2>
         <p className="text-xs theme-text-muted mb-4">
-          Fallback used when a site has no SMTP server assigned. Stored in{" "}
-          <code className="px-1 rounded" style={{ background: "var(--panel-strong)" }}>.env.local</code>.
-          Restart the app after saving.
+          Fallback used when a site has no SMTP server assigned from the library below. Stored in{" "}
+          <code className="px-1 rounded" style={{ background: "var(--panel-strong)" }}>.env.local</code>{" "}
+          — requires an app restart to take effect.{" "}
+          <span className="theme-text-soft">Tip: add servers to the library instead — those take effect immediately with no restart needed.</span>
         </p>
         {appSmtpLoading ? (
           <p className="text-sm theme-text-muted">Loading...</p>
