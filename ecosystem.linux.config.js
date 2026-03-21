@@ -18,8 +18,7 @@ module.exports = {
   apps: [
     {
       name: appName,
-      script: "npm",
-      args: "start",
+      script: `${projectDir}/start.mjs`,
       cwd: projectDir,
       instances: 1,
       exec_mode: "fork",

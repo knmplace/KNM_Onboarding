@@ -93,9 +93,20 @@ export async function POST(request: NextRequest) {
         isAdmin,
       },
     });
-  } catch {
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    const isNetworkError =
+      message.includes("fetch failed") ||
+      message.includes("ECONNREFUSED") ||
+      message.includes("ENOTFOUND") ||
+      message.includes("ETIMEDOUT");
     return NextResponse.json(
-      { success: false, message: "Internal server error" },
+      {
+        success: false,
+        message: isNetworkError
+          ? `Cannot reach WordPress: ${message}`
+          : "Internal server error",
+      },
       { status: 500 }
     );
   }
