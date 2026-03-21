@@ -155,29 +155,8 @@ function brandBar(branding?: Partial<EmailBranding>): string {
   }
 
   return `
-    <div class="brand">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-        <tr>
-          <td align="left" style="padding: 0;">
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-              <tr>
-                <td width="85" valign="middle" style="padding: 0;">
-                  <div class="brand-logo">
-                    ${
-                      logoUrl
-                        ? `<img src="${logoUrl}" alt="${resolved.siteName} logo" class="brand-logo-img" width="85" height="100" />`
-                        : `<span class="brand-logo-fallback">${initial}</span>`
-                    }
-                  </div>
-                </td>
-                <td valign="middle" align="left" style="padding-left: 10px;">
-                  <div class="brand-name">${resolved.siteName} Secure Onboarding</div>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-      </table>
+    <div class="brand-wordmark-bar">
+      <span class="brand-wordmark-text">${resolved.siteName}</span>
     </div>
   `;
 }
@@ -191,12 +170,9 @@ function wrap(content: string, branding?: Partial<EmailBranding>): string {
   return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><style>${baseStyle}
-  .brand { background: ${primaryDark}; }
-  .brand-logo { width: 85px; height: 100px; border-radius: 0; background: transparent; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; }
-  .brand-logo-img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .brand-wordmark-bar { background: #ffffff; text-align: center; padding: 20px 0 16px; }
+  .brand-wordmark-text { font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 28px; font-weight: 700; letter-spacing: 1.5px; color: ${primaryDark}; text-transform: uppercase; }
   .brand-wordmark-img { width: 152px; max-width: 152px; height: 56px; max-height: 56px; object-fit: contain; display: block; }
-  .brand-logo-fallback { color: ${primaryDark}; font-size: 18px; font-weight: 800; line-height: 1; }
-  .brand-name { color: #ffffff; font-size: 12px; font-weight: 700; letter-spacing: 0.7px; text-transform: uppercase; }
   .brand-compact { background: #ffffff; }
   .brand-compact-name-cell { padding: 3px 20px; background: ${primaryDark}; }
   .hero { background: ${primary}; }
