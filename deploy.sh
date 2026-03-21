@@ -214,22 +214,10 @@ info "Press Enter to skip any field. Skipped fields can be configured"
 info "via the setup wizard on first login, or in Sites → Edit."
 echo
 
-prompt "App port [6001]:" APP_PORT_INPUT
-APP_PORT="${APP_PORT_INPUT:-6001}"
-
-prompt "Webhook port [9100]:" WEBHOOK_PORT_INPUT
-WEBHOOK_PORT="${WEBHOOK_PORT_INPUT:-9100}"
-
-prompt "Install directory [/opt/adob]:" INSTALL_DIR_INPUT
-INSTALL_DIR="${INSTALL_DIR_INPUT:-/opt/adob}"
-# Ensure absolute path — prepend /opt/ if user typed a bare name like "adob"
-if [[ "$INSTALL_DIR" != /* ]]; then
-  INSTALL_DIR="/opt/${INSTALL_DIR}"
-  warn "Install directory was relative — using ${INSTALL_DIR}"
-fi
-
-prompt "PM2 app name [adob]:" PM2_NAME_INPUT
-PM2_APP_NAME="${PM2_NAME_INPUT:-adob}"
+APP_PORT=6001
+WEBHOOK_PORT=9100
+INSTALL_DIR="/opt/adob"
+PM2_APP_NAME="adob"
 
 prompt "Public app URL (e.g. https://onboarding.yourdomain.com):" NEXT_PUBLIC_APP_URL
 if [[ -z "$NEXT_PUBLIC_APP_URL" ]]; then
