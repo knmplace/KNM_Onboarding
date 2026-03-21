@@ -49,3 +49,7 @@ backups/
 # ADOB project planning files (local use only)
 PLAN.md
 TODO.md
+
+# Local SSH/dev notes — never commit (contains server IPs and auth hints)
+.ssh.env
+.claude-ssh.md

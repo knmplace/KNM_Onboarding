@@ -13,7 +13,7 @@ A single `deploy.sh` script installs and configures everything: Node.js, Postgre
 - **Email validation** — Abstract API integration for breach detection (optional)
 - **Automated reminders** — n8n-powered scheduled email reminders
 - **First-run setup wizard** — PIN-protected credential entry for credentials not set during deploy
-- **Auto-deploy webhooks** — push to GitHub or Gitea and the server rebuilds automatically
+- **Auto-deploy webhooks** — push to GitHub and the server rebuilds automatically
 - **PM2 process management** — survives reboots, restarts on crash
 
 ---
@@ -46,10 +46,11 @@ bash deploy.sh
 
 | File | Contents |
 |------|----------|
-| [DEPLOY.md](DEPLOY.md) | Full deployment walkthrough, manual fallback steps |
+| [DEPLOY.md](DEPLOY.md) | Full deployment walkthrough, update.sh usage, manual fallback steps |
 | [N8N_SETUP.md](N8N_SETUP.md) | n8n requirements, local vs remote, API key setup |
 | [WORDPRESS_SETUP.md](WORDPRESS_SETUP.md) | WordPress mu-plugin install, Application Password setup |
 | [CHANGELOG.md](CHANGELOG.md) | Version history |
+| [ERRORS.md](ERRORS.md) | Known issues, fixes applied, troubleshooting |
 
 ---
 

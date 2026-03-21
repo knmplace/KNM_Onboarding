@@ -174,6 +174,43 @@ pm2 restart ONBOARDING
 
 ---
 
+## Issue 9: npm audit vulnerabilities on install
+
+**Symptom:**
+After `npm install`, warnings appear:
+```
+16 vulnerabilities (5 moderate, 11 high)
+```
+
+**Root Cause:**
+Two production dependencies (`next` and `bcrypt`) had known CVEs. The remaining
+vulnerabilities are all in Prisma's internal dev tooling chain (`hono`, `effect`,
+`lodash`, `chevrotain`) — never executed in production.
+
+**Fix Applied:**
+- `next` bumped to `^16.2.1` — resolves HTTP smuggling, DoS, and CSRF bypass CVEs
+- `bcrypt` bumped to `^6.0.0` — resolves `tar` path traversal chain via `@mapbox/node-pre-gyp`
+- `deploy.sh` and `update.sh` both run `npm audit fix` (safe only, no `--force`) after `npm install`
+
+**Remaining 11 warnings (intentionally not fixed):**
+All in Prisma internal dev tooling — require `--force` to fix which would upgrade
+Prisma itself and risk breaking schema behavior. Not reachable in production.
+
+---
+
+## Issue 10: Git remote confusion — adob repo on Gitea vs GitHub
+
+**Symptom:**
+Server at `/opt/KNM_Onboarding` clones from GitHub but local pushes were going to
+Gitea only — server never received updates.
+
+**Fix Applied:**
+- Removed Gitea remote from `b:/Claude_Apps/adob/`
+- `origin` is now GitHub only: `https://github.com/knmplace/KNM_Onboarding.git`
+- Server pulls from GitHub via `cd /opt/KNM_Onboarding && git pull && bash update.sh`
+
+---
+
 ## docker-compose `version` warning
 
 **Symptom:**

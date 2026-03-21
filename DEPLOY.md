@@ -181,19 +181,28 @@ Key variables:
 
 ## Upgrading
 
-If you set up auto-deploy during installation, push to your repo and the server updates automatically.
+Use `update.sh` for all upgrades — it is safe to run on a live server and preserves all credentials.
 
-To upgrade manually:
+### Standard update
 
 ```bash
-cd /opt/adob
+cd /opt/KNM_Onboarding
 git pull
-npm install
-npx prisma generate
-npx prisma db push
-npm run build
-pm2 restart adob
+bash update.sh
 ```
+
+`update.sh` will:
+1. Detect the existing install and back up `.env.local` to `backups/`
+2. Stop PM2 gracefully
+3. Rsync code files only — `.env.local`, `node_modules`, `logs`, and `backups` are never touched
+4. `npm install` + `npm audit fix` (safe fixes only)
+5. `prisma db push` — non-destructive schema migrations only
+6. `npm run build`
+7. Restart PM2 and the webhook systemd service (if present)
+
+### If auto-deploy webhook is configured
+
+Push to GitHub and the server updates automatically via the webhook.
 
 ---
 
