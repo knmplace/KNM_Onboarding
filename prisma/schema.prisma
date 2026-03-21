@@ -27,6 +27,23 @@ model AdminUser {
   @@map("admin_user")
 }
 
+model SmtpServer {
+  id            Int      @id @default(autoincrement())
+  label         String                        // Human name, e.g. "Gmail - Main"
+  host          String
+  port          Int      @default(465)
+  secure        Boolean  @default(true)
+  username      String
+  password      String
+  fromEmail     String   @map("from_email")
+  fromName      String?  @map("from_name")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  sites         Site[]
+
+  @@map("smtp_server")
+}
+
 model Site {
   id                  Int               @id @default(autoincrement())
   slug                String            @unique
@@ -41,6 +58,8 @@ model Site {
   profilegridApiUrl   String?           @map("profilegrid_api_url")
   profilegridUsername String?           @map("profilegrid_username")
   profilegridAppPassword String?        @map("profilegrid_app_password")
+  smtpServerId        Int?              @map("smtp_server_id")
+  smtpServer          SmtpServer?       @relation(fields: [smtpServerId], references: [id], onDelete: SetNull)
   smtpHost            String?           @map("smtp_host")
   smtpPort            Int?              @map("smtp_port")
   smtpSecure          Boolean?          @map("smtp_secure")

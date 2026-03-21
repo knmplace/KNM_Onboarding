@@ -56,6 +56,7 @@ export async function GET() {
         profilegridApiUrl: site.profilegridApiUrl,
         emailFooterImageUrl: site.emailFooterImageUrl,
         supportEmail: site.supportEmail,
+        smtpServerId: site.smtpServerId,
         smtpFromEmail: site.smtpFromEmail,
         smtpFromName: site.smtpFromName,
         n8nSyncWorkflowId: site.n8nSyncWorkflowId,
@@ -116,8 +117,27 @@ export async function POST(request: Request) {
 
     const { siteData, branding } = await buildSiteConfigFromInput(parsed.data);
 
+    // If an SMTP server from the library is selected, copy its values into the site
+    let smtpOverride: Record<string, unknown> = {};
+    const smtpServerId = body?.smtpServerId ? Number(body.smtpServerId) : null;
+    if (smtpServerId) {
+      const smtpServer = await prisma.smtpServer.findUnique({ where: { id: smtpServerId } });
+      if (smtpServer) {
+        smtpOverride = {
+          smtpServerId: smtpServer.id,
+          smtpHost: smtpServer.host,
+          smtpPort: smtpServer.port,
+          smtpSecure: smtpServer.secure,
+          smtpUsername: smtpServer.username,
+          smtpPassword: smtpServer.password,
+          smtpFromEmail: smtpServer.fromEmail,
+          smtpFromName: smtpServer.fromName,
+        };
+      }
+    }
+
     const site = await prisma.site.create({
-      data: siteData,
+      data: { ...siteData, ...smtpOverride },
     });
 
     let provisioning = null;

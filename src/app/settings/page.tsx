@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
-type SmtpSettings = {
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+type AppSmtp = {
   smtpHost: string;
   smtpPort: string;
   smtpSecure: string;
@@ -14,128 +16,256 @@ type SmtpSettings = {
   smtpPasswordSet: boolean;
 };
 
-type SmtpPreset = {
+type SmtpServer = {
+  id: number;
+  label: string;
+  host: string;
+  port: number;
+  secure: boolean;
+  username: string;
+  fromEmail: string;
+  fromName: string | null;
+  createdAt: string;
+  sites: { id: number; name: string; slug: string }[];
+};
+
+type ServerForm = {
   label: string;
   host: string;
   port: string;
-  secure: string;
-  note?: string;
+  secure: boolean;
+  username: string;
+  password: string;
+  fromEmail: string;
+  fromName: string;
 };
 
-const SMTP_PRESETS: SmtpPreset[] = [
-  { label: "Gmail", host: "smtp.gmail.com", port: "465", secure: "true", note: "Use an App Password, not your Google account password." },
-  { label: "Gmail (STARTTLS)", host: "smtp.gmail.com", port: "587", secure: "false", note: "Use an App Password." },
-  { label: "Outlook / Office 365", host: "smtp.office365.com", port: "587", secure: "false" },
-  { label: "Outlook.com / Hotmail", host: "smtp-mail.outlook.com", port: "587", secure: "false" },
-  { label: "Yahoo Mail", host: "smtp.mail.yahoo.com", port: "465", secure: "true", note: "Use an App Password." },
-  { label: "SendGrid", host: "smtp.sendgrid.net", port: "465", secure: "true", note: "Username is always 'apikey'. Password is your API key." },
-  { label: "Mailgun", host: "smtp.mailgun.org", port: "465", secure: "true" },
-  { label: "Amazon SES (US East)", host: "email-smtp.us-east-1.amazonaws.com", port: "465", secure: "true" },
-  { label: "Brevo (Sendinblue)", host: "smtp-relay.brevo.com", port: "587", secure: "false" },
-  { label: "Postmark", host: "smtp.postmarkapp.com", port: "587", secure: "false" },
-  { label: "Custom / Other", host: "", port: "465", secure: "true" },
+// ── Provider presets ───────────────────────────────────────────────────────────
+
+const PRESETS = [
+  { label: "Gmail (SSL/TLS — port 465)", host: "smtp.gmail.com", port: "465", secure: true, note: "Use an App Password, not your Google account password." },
+  { label: "Gmail (STARTTLS — port 587)", host: "smtp.gmail.com", port: "587", secure: false, note: "Use an App Password." },
+  { label: "Outlook / Office 365", host: "smtp.office365.com", port: "587", secure: false },
+  { label: "Outlook.com / Hotmail", host: "smtp-mail.outlook.com", port: "587", secure: false },
+  { label: "Yahoo Mail", host: "smtp.mail.yahoo.com", port: "465", secure: true, note: "Use an App Password." },
+  { label: "SendGrid", host: "smtp.sendgrid.net", port: "465", secure: true, note: "Username is always 'apikey'. Password is your SendGrid API key." },
+  { label: "Mailgun", host: "smtp.mailgun.org", port: "465", secure: true },
+  { label: "Amazon SES (US East)", host: "email-smtp.us-east-1.amazonaws.com", port: "465", secure: true },
+  { label: "Brevo (Sendinblue)", host: "smtp-relay.brevo.com", port: "587", secure: false },
+  { label: "Postmark", host: "smtp.postmarkapp.com", port: "587", secure: false },
+  { label: "Custom / Other", host: "", port: "465", secure: true },
 ];
 
+const emptyServerForm = (): ServerForm => ({
+  label: "", host: "", port: "465", secure: true,
+  username: "", password: "", fromEmail: "", fromName: "",
+});
+
+// ── Component ─────────────────────────────────────────────────────────────────
+
 export default function SettingsPage() {
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [testing, setTesting] = useState(false);
+  // App-level SMTP state
+  const [appSmtpLoading, setAppSmtpLoading] = useState(true);
+  const [appSmtpSaving, setAppSmtpSaving] = useState(false);
+  const [appSmtpTesting, setAppSmtpTesting] = useState(false);
+  const [appSmtp, setAppSmtp] = useState<AppSmtp>({
+    smtpHost: "", smtpPort: "465", smtpSecure: "true",
+    smtpUsername: "", smtpFromEmail: "", smtpFromName: "",
+    smtpPasswordSet: false,
+  });
+  const [appSmtpPassword, setAppSmtpPassword] = useState("");
+  const [appPresetNote, setAppPresetNote] = useState("");
+
+  // SMTP library state
+  const [servers, setServers] = useState<SmtpServer[]>([]);
+  const [serversLoading, setServersLoading] = useState(true);
+  const [serverForm, setServerForm] = useState<ServerForm>(emptyServerForm());
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [serverSaving, setServerSaving] = useState(false);
+  const [serverTesting, setServerTesting] = useState(false);
+  const [presetNote, setPresetNote] = useState("");
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  // Shared notices
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [selectedPreset, setSelectedPreset] = useState("");
-  const [presetNote, setPresetNote] = useState("");
 
-  const [form, setForm] = useState({
-    smtpHost: "",
-    smtpPort: "465",
-    smtpSecure: "true",
-    smtpUsername: "",
-    smtpPassword: "",
-    smtpFromEmail: "",
-    smtpFromName: "",
-  });
-  const [passwordSet, setPasswordSet] = useState(false);
-
+  // ── Load app SMTP ────────────────────────────────────────────────────────────
   useEffect(() => {
     fetch("/api/settings/smtp")
       .then((r) => r.json())
-      .then((data: SmtpSettings) => {
-        setForm({
-          smtpHost: data.smtpHost,
-          smtpPort: data.smtpPort,
-          smtpSecure: data.smtpSecure,
-          smtpUsername: data.smtpUsername,
-          smtpPassword: "",
-          smtpFromEmail: data.smtpFromEmail,
-          smtpFromName: data.smtpFromName,
-        });
-        setPasswordSet(data.smtpPasswordSet);
+      .then((data: AppSmtp) => {
+        setAppSmtp(data);
       })
-      .catch(() => setError("Failed to load SMTP settings."))
-      .finally(() => setLoading(false));
+      .catch(() => setError("Failed to load app SMTP settings."))
+      .finally(() => setAppSmtpLoading(false));
   }, []);
 
-  function applyPreset(label: string) {
-    const preset = SMTP_PRESETS.find((p) => p.label === label);
-    if (!preset) return;
-    setSelectedPreset(label);
-    setPresetNote(preset.note || "");
-    setForm((prev) => ({
-      ...prev,
-      smtpHost: preset.host,
-      smtpPort: preset.port,
-      smtpSecure: preset.secure,
-    }));
+  // ── Load SMTP library ────────────────────────────────────────────────────────
+  async function fetchServers() {
+    setServersLoading(true);
+    try {
+      const res = await fetch("/api/smtp-servers");
+      const data = await res.json();
+      setServers(data.servers ?? []);
+    } catch {
+      setError("Failed to load SMTP servers.");
+    } finally {
+      setServersLoading(false);
+    }
   }
 
-  async function handleSave(e: React.FormEvent) {
+  useEffect(() => { fetchServers(); }, []);
+
+  // ── App SMTP handlers ────────────────────────────────────────────────────────
+  function applyAppPreset(label: string) {
+    const p = PRESETS.find((x) => x.label === label);
+    if (!p) return;
+    setAppPresetNote(p.note || "");
+    setAppSmtp((prev) => ({ ...prev, smtpHost: p.host, smtpPort: String(p.port), smtpSecure: p.secure ? "true" : "false" }));
+  }
+
+  async function saveAppSmtp(e: React.FormEvent) {
     e.preventDefault();
-    setSaving(true);
-    setError(null);
-    setNotice(null);
+    setAppSmtpSaving(true);
+    setError(null); setNotice(null);
     try {
       const res = await fetch("/api/settings/smtp", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...appSmtp, smtpPassword: appSmtpPassword }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to save.");
-      setNotice("SMTP settings saved. Restart the app for changes to take effect.");
-      if (form.smtpPassword) setPasswordSet(true);
-      setForm((prev) => ({ ...prev, smtpPassword: "" }));
+      setNotice("App SMTP saved. Restart the app for changes to take effect.");
+      if (appSmtpPassword) { setAppSmtp((p) => ({ ...p, smtpPasswordSet: true })); setAppSmtpPassword(""); }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save.");
     } finally {
-      setSaving(false);
+      setAppSmtpSaving(false);
     }
   }
 
-  async function handleTest() {
-    setTesting(true);
-    setError(null);
-    setNotice(null);
+  async function testAppSmtp() {
+    setAppSmtpTesting(true);
+    setError(null); setNotice(null);
     try {
       const res = await fetch("/api/sites/test-smtp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          smtpHost: form.smtpHost,
-          smtpPort: Number.parseInt(form.smtpPort, 10) || undefined,
-          smtpSecure: form.smtpSecure === "true",
-          smtpUsername: form.smtpUsername,
-          smtpPassword: form.smtpPassword || undefined,
-          smtpFromEmail: form.smtpFromEmail,
-          smtpFromName: form.smtpFromName,
+          smtpHost: appSmtp.smtpHost,
+          smtpPort: Number(appSmtp.smtpPort) || undefined,
+          smtpSecure: appSmtp.smtpSecure === "true",
+          smtpUsername: appSmtp.smtpUsername,
+          smtpPassword: appSmtpPassword || undefined,
+          smtpFromEmail: appSmtp.smtpFromEmail,
+          smtpFromName: appSmtp.smtpFromName,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "SMTP test failed.");
-      setNotice(data.result?.detail || "SMTP connected successfully.");
+      setNotice(data.result?.detail || "Connected successfully.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "SMTP test failed.");
     } finally {
-      setTesting(false);
+      setAppSmtpTesting(false);
+    }
+  }
+
+  // ── Library server handlers ──────────────────────────────────────────────────
+  function applyPreset(label: string) {
+    const p = PRESETS.find((x) => x.label === label);
+    if (!p) return;
+    setPresetNote(p.note || "");
+    setServerForm((prev) => ({ ...prev, host: p.host, port: String(p.port), secure: p.secure }));
+  }
+
+  function startEdit(s: SmtpServer) {
+    setEditingId(s.id);
+    setPresetNote("");
+    setError(null); setNotice(null);
+    setServerForm({
+      label: s.label, host: s.host, port: String(s.port),
+      secure: s.secure, username: s.username, password: "",
+      fromEmail: s.fromEmail, fromName: s.fromName || "",
+    });
+    window.scrollTo({ top: document.getElementById("smtp-library-form")?.offsetTop ?? 0, behavior: "smooth" });
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setPresetNote("");
+    setServerForm(emptyServerForm());
+  }
+
+  async function saveServer(e: React.FormEvent) {
+    e.preventDefault();
+    setServerSaving(true);
+    setError(null); setNotice(null);
+    try {
+      const url = editingId ? `/api/smtp-servers/${editingId}` : "/api/smtp-servers";
+      const method = editingId ? "PATCH" : "POST";
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...serverForm, port: Number(serverForm.port) || 465 }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to save.");
+      setNotice(editingId ? `Updated "${data.server.label}".` : `Added "${data.server.label}" to library.`);
+      setEditingId(null);
+      setServerForm(emptyServerForm());
+      setPresetNote("");
+      await fetchServers();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save.");
+    } finally {
+      setServerSaving(false);
+    }
+  }
+
+  async function testServer() {
+    setServerTesting(true);
+    setError(null); setNotice(null);
+    try {
+      const res = await fetch("/api/sites/test-smtp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          smtpHost: serverForm.host,
+          smtpPort: Number(serverForm.port) || undefined,
+          smtpSecure: serverForm.secure,
+          smtpUsername: serverForm.username,
+          smtpPassword: serverForm.password || undefined,
+          smtpFromEmail: serverForm.fromEmail,
+          smtpFromName: serverForm.fromName,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "SMTP test failed.");
+      setNotice(data.result?.detail || "Connected successfully.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "SMTP test failed.");
+    } finally {
+      setServerTesting(false);
+    }
+  }
+
+  async function deleteServer(id: number, label: string) {
+    if (!confirm(`Remove "${label}" from the library? Sites using it will keep their current SMTP settings but lose the library link.`)) return;
+    setDeletingId(id);
+    setError(null); setNotice(null);
+    try {
+      const res = await fetch(`/api/smtp-servers/${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to delete.");
+      setNotice(`Removed "${label}" from library.`);
+      await fetchServers();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete.");
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -147,14 +277,10 @@ export default function SettingsPage() {
       <div className="flex items-center justify-between mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold">Settings</h1>
-          <p className="text-sm theme-text-muted mt-1">
-            Application-level configuration. SMTP here is the default for all sites.
-          </p>
+          <p className="text-sm theme-text-muted mt-1">App configuration and SMTP server library.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Link href="/" className="theme-button theme-button--ghost px-3 py-1.5 text-sm">
-            Back to Dashboard
-          </Link>
+          <Link href="/" className="theme-button theme-button--ghost px-3 py-1.5 text-sm">Back to Dashboard</Link>
           <ThemeToggle />
         </div>
       </div>
@@ -162,151 +288,211 @@ export default function SettingsPage() {
       {error && <div className="theme-alert theme-alert--error mb-4">{error}</div>}
       {notice && <div className="theme-alert theme-alert--success mb-4">{notice}</div>}
 
-      {loading ? (
-        <div className="theme-card p-6 text-sm theme-text-muted">Loading settings...</div>
-      ) : (
-        <form onSubmit={handleSave} className="theme-card p-6 space-y-6 max-w-2xl">
-          <div>
-            <h2 className="font-semibold mb-1">Default SMTP</h2>
-            <p className="text-xs theme-text-muted">
-              Used by all sites unless a site has its own SMTP configured. Saved to{" "}
-              <code className="px-1 rounded" style={{ background: "var(--panel-strong)" }}>
-                .env.local
-              </code>
-              . The app must restart for changes to take effect.
-            </p>
-          </div>
+      {/* ── App Default SMTP ── */}
+      <section className="theme-card p-6 mb-8 max-w-2xl">
+        <h2 className="font-semibold mb-1">App Default SMTP</h2>
+        <p className="text-xs theme-text-muted mb-4">
+          Fallback used when a site has no SMTP server assigned. Stored in{" "}
+          <code className="px-1 rounded" style={{ background: "var(--panel-strong)" }}>.env.local</code>.
+          Restart the app after saving.
+        </p>
+        {appSmtpLoading ? (
+          <p className="text-sm theme-text-muted">Loading...</p>
+        ) : (
+          <form onSubmit={saveAppSmtp} className="space-y-4">
+            <div>
+              <label className={labelClass}>Provider Preset</label>
+              <select onChange={(e) => applyAppPreset(e.target.value)} defaultValue="" className={inputClass}>
+                <option value="">— Select provider to pre-fill —</option>
+                {PRESETS.map((p) => <option key={p.label} value={p.label}>{p.label}</option>)}
+              </select>
+              {appPresetNote && <p className="mt-1 text-xs" style={{ color: "var(--warning-text, #92400e)" }}>{appPresetNote}</p>}
+            </div>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className={labelClass}>SMTP Host</label>
+                <input type="text" value={appSmtp.smtpHost} onChange={(e) => setAppSmtp((p) => ({ ...p, smtpHost: e.target.value }))} placeholder="smtp.gmail.com" className={inputClass} />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className={labelClass}>Port</label>
+                  <input type="text" value={appSmtp.smtpPort} onChange={(e) => setAppSmtp((p) => ({ ...p, smtpPort: e.target.value }))} placeholder="465" className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>Secure</label>
+                  <select value={appSmtp.smtpSecure} onChange={(e) => setAppSmtp((p) => ({ ...p, smtpSecure: e.target.value }))} className={inputClass}>
+                    <option value="true">SSL/TLS</option>
+                    <option value="false">STARTTLS</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className={labelClass}>Username</label>
+                <input type="text" value={appSmtp.smtpUsername} onChange={(e) => setAppSmtp((p) => ({ ...p, smtpUsername: e.target.value }))} className={inputClass} autoComplete="username" />
+              </div>
+              <div>
+                <label className={labelClass}>
+                  Password{" "}
+                  {appSmtp.smtpPasswordSet && <span className="text-xs theme-text-soft">(set — leave blank to keep)</span>}
+                </label>
+                <input type="password" value={appSmtpPassword} onChange={(e) => setAppSmtpPassword(e.target.value)} placeholder={appSmtp.smtpPasswordSet ? "Leave blank to keep" : "Enter password"} className={inputClass} autoComplete="new-password" />
+              </div>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className={labelClass}>From Email</label>
+                <input type="email" value={appSmtp.smtpFromEmail} onChange={(e) => setAppSmtp((p) => ({ ...p, smtpFromEmail: e.target.value }))} className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>From Name <span className="text-xs theme-text-soft">(optional)</span></label>
+                <input type="text" value={appSmtp.smtpFromName} onChange={(e) => setAppSmtp((p) => ({ ...p, smtpFromName: e.target.value }))} className={inputClass} />
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button type="submit" disabled={appSmtpSaving} className="theme-button theme-button--primary px-4 py-2 text-sm disabled:opacity-50">
+                {appSmtpSaving ? "Saving..." : "Save"}
+              </button>
+              <button type="button" onClick={testAppSmtp} disabled={appSmtpTesting} className="theme-button theme-button--ghost px-4 py-2 text-sm disabled:opacity-50">
+                {appSmtpTesting ? "Testing..." : "Test Connection"}
+              </button>
+            </div>
+          </form>
+        )}
+      </section>
 
-          {/* Provider preset picker */}
-          <div>
-            <label className={labelClass}>Provider Preset</label>
-            <select
-              value={selectedPreset}
-              onChange={(e) => applyPreset(e.target.value)}
-              className={inputClass}
-            >
-              <option value="">— Select a provider to pre-fill settings —</option>
-              {SMTP_PRESETS.map((p) => (
-                <option key={p.label} value={p.label}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
-            {presetNote && (
-              <p className="mt-1 text-xs" style={{ color: "var(--warning-text, #92400e)" }}>
-                {presetNote}
-              </p>
+      {/* ── SMTP Server Library ── */}
+      <section>
+        <h2 className="text-xl font-semibold mb-1">SMTP Server Library</h2>
+        <p className="text-sm theme-text-muted mb-4">
+          Save reusable SMTP servers here. Assign them to sites from the Sites page — the server settings are copied to the site automatically.
+        </p>
+
+        <div className="grid gap-6 lg:grid-cols-[1fr,1fr]">
+
+          {/* Library list */}
+          <div className="theme-card overflow-hidden">
+            <div className="px-5 py-4 border-b" style={{ borderColor: "var(--border)" }}>
+              <h3 className="font-semibold">Saved Servers</h3>
+            </div>
+            {serversLoading ? (
+              <div className="p-5 text-sm theme-text-muted">Loading...</div>
+            ) : servers.length === 0 ? (
+              <div className="p-5 text-sm theme-text-muted">No SMTP servers saved yet. Add one using the form.</div>
+            ) : (
+              <div className="divide-y" style={{ borderColor: "var(--border)" }}>
+                {servers.map((s) => (
+                  <div key={s.id} className="p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="font-medium text-sm">{s.label}</div>
+                        <div className="text-xs theme-text-muted mt-0.5">
+                          {s.host}:{s.port} · {s.secure ? "SSL/TLS" : "STARTTLS"} · {s.username}
+                        </div>
+                        <div className="text-xs theme-text-muted">From: {s.fromEmail}{s.fromName ? ` (${s.fromName})` : ""}</div>
+                        <div className="text-xs theme-text-soft mt-1">
+                          Password: <span className="italic">stored, hidden</span>
+                        </div>
+                        {s.sites.length > 0 && (
+                          <div className="text-xs mt-1" style={{ color: "var(--accent)" }}>
+                            Used by: {s.sites.map((x) => x.name).join(", ")}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <button type="button" onClick={() => startEdit(s)} className="theme-button theme-button--ghost px-2 py-1 text-xs">Edit</button>
+                        <button type="button" onClick={() => deleteServer(s.id, s.label)} disabled={deletingId === s.id} className="theme-button theme-button--ghost px-2 py-1 text-xs text-red-600 disabled:opacity-50">
+                          {deletingId === s.id ? "..." : "Remove"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div>
-              <label className={labelClass}>SMTP Host</label>
-              <input
-                type="text"
-                value={form.smtpHost}
-                onChange={(e) => setForm((p) => ({ ...p, smtpHost: e.target.value }))}
-                placeholder="smtp.gmail.com"
-                className={inputClass}
-              />
+          {/* Add / Edit form */}
+          <div className="theme-card" id="smtp-library-form">
+            <div className="px-5 py-4 border-b" style={{ borderColor: "var(--border)" }}>
+              <h3 className="font-semibold">{editingId ? "Edit Server" : "Add Server"}</h3>
+              <p className="text-xs theme-text-muted mt-0.5">Give it a descriptive label so it's easy to identify.</p>
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <form onSubmit={saveServer} className="p-5 space-y-4">
               <div>
-                <label className={labelClass}>Port</label>
-                <input
-                  type="text"
-                  value={form.smtpPort}
-                  onChange={(e) => setForm((p) => ({ ...p, smtpPort: e.target.value }))}
-                  placeholder="465"
-                  className={inputClass}
-                />
+                <label className={labelClass}>Label</label>
+                <input type="text" value={serverForm.label} onChange={(e) => setServerForm((p) => ({ ...p, label: e.target.value }))} placeholder="e.g. Gmail - Main Account" className={inputClass} required />
               </div>
+
               <div>
-                <label className={labelClass}>Secure (SSL)</label>
-                <select
-                  value={form.smtpSecure}
-                  onChange={(e) => setForm((p) => ({ ...p, smtpSecure: e.target.value }))}
-                  className={inputClass}
-                >
-                  <option value="true">Yes (SSL/TLS)</option>
-                  <option value="false">No (STARTTLS)</option>
+                <label className={labelClass}>Provider Preset</label>
+                <select value="" onChange={(e) => applyPreset(e.target.value)} className={inputClass}>
+                  <option value="">— Select to pre-fill host/port/secure —</option>
+                  {PRESETS.map((p) => <option key={p.label} value={p.label}>{p.label}</option>)}
                 </select>
+                {presetNote && <p className="mt-1 text-xs" style={{ color: "var(--warning-text, #92400e)" }}>{presetNote}</p>}
               </div>
-            </div>
-          </div>
 
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div>
-              <label className={labelClass}>SMTP Username</label>
-              <input
-                type="text"
-                value={form.smtpUsername}
-                onChange={(e) => setForm((p) => ({ ...p, smtpUsername: e.target.value }))}
-                placeholder="you@yourdomain.com"
-                className={inputClass}
-                autoComplete="username"
-              />
-            </div>
-            <div>
-              <label className={labelClass}>
-                SMTP Password{" "}
-                {passwordSet && (
-                  <span className="text-xs theme-text-soft">(currently set — leave blank to keep)</span>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2 sm:col-span-1">
+                  <label className={labelClass}>Host</label>
+                  <input type="text" value={serverForm.host} onChange={(e) => setServerForm((p) => ({ ...p, host: e.target.value }))} placeholder="smtp.gmail.com" className={inputClass} required />
+                </div>
+                <div>
+                  <label className={labelClass}>Port</label>
+                  <input type="text" value={serverForm.port} onChange={(e) => setServerForm((p) => ({ ...p, port: e.target.value }))} className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>Secure</label>
+                  <select value={serverForm.secure ? "true" : "false"} onChange={(e) => setServerForm((p) => ({ ...p, secure: e.target.value === "true" }))} className={inputClass}>
+                    <option value="true">SSL/TLS</option>
+                    <option value="false">STARTTLS</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <label className={labelClass}>Username</label>
+                  <input type="text" value={serverForm.username} onChange={(e) => setServerForm((p) => ({ ...p, username: e.target.value }))} className={inputClass} required autoComplete="username" />
+                </div>
+                <div>
+                  <label className={labelClass}>
+                    Password{editingId && <span className="text-xs theme-text-soft ml-1">(leave blank to keep)</span>}
+                  </label>
+                  <input type="password" value={serverForm.password} onChange={(e) => setServerForm((p) => ({ ...p, password: e.target.value }))} placeholder={editingId ? "Leave blank to keep" : "Required"} className={inputClass} required={!editingId} autoComplete="new-password" />
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <label className={labelClass}>From Email</label>
+                  <input type="email" value={serverForm.fromEmail} onChange={(e) => setServerForm((p) => ({ ...p, fromEmail: e.target.value }))} className={inputClass} required />
+                </div>
+                <div>
+                  <label className={labelClass}>From Name <span className="text-xs theme-text-soft">(optional)</span></label>
+                  <input type="text" value={serverForm.fromName} onChange={(e) => setServerForm((p) => ({ ...p, fromName: e.target.value }))} className={inputClass} />
+                </div>
+              </div>
+
+              <div className="flex gap-3 flex-wrap">
+                <button type="submit" disabled={serverSaving} className="theme-button theme-button--primary px-4 py-2 text-sm disabled:opacity-50">
+                  {serverSaving ? "Saving..." : editingId ? "Save Changes" : "Add to Library"}
+                </button>
+                <button type="button" onClick={testServer} disabled={serverTesting} className="theme-button theme-button--ghost px-4 py-2 text-sm disabled:opacity-50">
+                  {serverTesting ? "Testing..." : "Test Connection"}
+                </button>
+                {editingId && (
+                  <button type="button" onClick={cancelEdit} className="theme-button theme-button--ghost px-4 py-2 text-sm">
+                    Cancel
+                  </button>
                 )}
-              </label>
-              <input
-                type="password"
-                value={form.smtpPassword}
-                onChange={(e) => setForm((p) => ({ ...p, smtpPassword: e.target.value }))}
-                placeholder={passwordSet ? "Leave blank to keep current" : "Enter password"}
-                className={inputClass}
-                autoComplete="new-password"
-              />
-            </div>
+              </div>
+            </form>
           </div>
-
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div>
-              <label className={labelClass}>From Email</label>
-              <input
-                type="email"
-                value={form.smtpFromEmail}
-                onChange={(e) => setForm((p) => ({ ...p, smtpFromEmail: e.target.value }))}
-                placeholder="onboarding@yourdomain.com"
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>From Name <span className="text-xs theme-text-soft">(optional)</span></label>
-              <input
-                type="text"
-                value={form.smtpFromName}
-                onChange={(e) => setForm((p) => ({ ...p, smtpFromName: e.target.value }))}
-                placeholder="My Company Onboarding"
-                className={inputClass}
-              />
-            </div>
-          </div>
-
-          <div className="flex gap-3 flex-wrap">
-            <button
-              type="submit"
-              disabled={saving}
-              className="theme-button theme-button--primary px-4 py-2 text-sm disabled:opacity-50"
-            >
-              {saving ? "Saving..." : "Save SMTP Settings"}
-            </button>
-            <button
-              type="button"
-              onClick={handleTest}
-              disabled={testing}
-              className="theme-button theme-button--ghost px-4 py-2 text-sm disabled:opacity-50"
-            >
-              {testing ? "Testing..." : "Test Connection"}
-            </button>
-          </div>
-        </form>
-      )}
+        </div>
+      </section>
     </main>
   );
 }

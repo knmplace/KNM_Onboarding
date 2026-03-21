@@ -94,6 +94,31 @@ export async function PATCH(
 
     const { siteData, branding } = await buildSiteConfigFromInput(parsed.data);
 
+    // If an SMTP server from the library is selected, copy its values into the site
+    let smtpOverride: Record<string, unknown> = {};
+    const smtpServerId = body?.smtpServerId !== undefined
+      ? (body.smtpServerId ? Number(body.smtpServerId) : null)
+      : undefined;
+
+    if (smtpServerId) {
+      const smtpServer = await prisma.smtpServer.findUnique({ where: { id: smtpServerId } });
+      if (smtpServer) {
+        smtpOverride = {
+          smtpServerId: smtpServer.id,
+          smtpHost: smtpServer.host,
+          smtpPort: smtpServer.port,
+          smtpSecure: smtpServer.secure,
+          smtpUsername: smtpServer.username,
+          smtpPassword: smtpServer.password,
+          smtpFromEmail: smtpServer.fromEmail,
+          smtpFromName: smtpServer.fromName,
+        };
+      }
+    } else if (smtpServerId === null) {
+      // Explicitly clearing the linked server
+      smtpOverride = { smtpServerId: null };
+    }
+
     // For credential fields that come in blank on edit (the UI intentionally
     // does not pre-fill passwords), keep the existing DB value rather than
     // overwriting with null.
@@ -114,6 +139,7 @@ export async function PATCH(
         existing.n8nWebhookAuthKey || siteData.n8nWebhookAuthKey,
       n8nSyncWorkflowId: existing.n8nSyncWorkflowId,
       n8nReminderWorkflowId: existing.n8nReminderWorkflowId,
+      ...smtpOverride,
     };
 
     const site = await prisma.site.update({

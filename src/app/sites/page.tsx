@@ -16,6 +16,7 @@ type SiteSummary = {
   profilegridApiUrl: string | null;
   emailFooterImageUrl: string | null;
   supportEmail: string | null;
+  smtpServerId: number | null;
   smtpFromEmail: string | null;
   smtpFromName: string | null;
   n8nSyncWorkflowId: string | null;
@@ -29,6 +30,17 @@ type SiteSummary = {
   };
   createdAt: string;
   updatedAt: string;
+};
+
+type SmtpServerOption = {
+  id: number;
+  label: string;
+  host: string;
+  port: number;
+  secure: boolean;
+  username: string;
+  fromEmail: string;
+  fromName: string | null;
 };
 
 type ConnectionResults = Record<
@@ -47,6 +59,7 @@ type SiteFormState = {
   wordpressAppPassword: string;
   supportEmail: string;
   accountLoginUrl: string;
+  smtpServerId: string;
   smtpHost: string;
   smtpPort: string;
   smtpSecure: boolean;
@@ -72,6 +85,7 @@ const initialForm: SiteFormState = {
   wordpressAppPassword: "",
   supportEmail: "",
   accountLoginUrl: "",
+  smtpServerId: "",
   smtpHost: "",
   smtpPort: "",
   smtpSecure: true,
@@ -115,6 +129,7 @@ function secretSummary(site: SiteSummary): string {
 
 export default function SitesPage() {
   const [sites, setSites] = useState<SiteSummary[]>([]);
+  const [smtpServers, setSmtpServers] = useState<SmtpServerOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -156,6 +171,10 @@ export default function SitesPage() {
 
   useEffect(() => {
     fetchSites();
+    fetch("/api/smtp-servers")
+      .then((r) => r.json())
+      .then((data) => setSmtpServers(data.servers ?? []))
+      .catch(() => {});
   }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -173,6 +192,7 @@ export default function SitesPage() {
         body: JSON.stringify({
           ...form,
           slug: derived.slug,
+          smtpServerId: form.smtpServerId ? Number(form.smtpServerId) : null,
           smtpPort: form.smtpPort ? Number.parseInt(form.smtpPort, 10) : undefined,
         }),
       });
@@ -215,6 +235,7 @@ export default function SitesPage() {
       wordpressAppPassword: "",
       supportEmail: site.supportEmail || "",
       accountLoginUrl: site.accountLoginUrl || "",
+      smtpServerId: site.smtpServerId ? String(site.smtpServerId) : "",
       smtpHost: "",
       smtpPort: "",
       smtpSecure: true,
@@ -388,6 +409,14 @@ export default function SitesPage() {
                       <div className="break-all">{site.emailFooterImageUrl || "Not found"}</div>
                     </div>
                     <div>
+                      <div className="theme-text-muted">SMTP Server</div>
+                      <div>
+                        {site.smtpServerId
+                          ? (smtpServers.find((s) => s.id === site.smtpServerId)?.label ?? `Library #${site.smtpServerId}`)
+                          : "App default"}
+                      </div>
+                    </div>
+                    <div>
                       <div className="theme-text-muted">Credentials Configured</div>
                       <div>{secretSummary(site)}</div>
                     </div>
@@ -518,6 +547,35 @@ export default function SitesPage() {
               <div>WP REST API: {derived.wordpressRestApiUrl || "Enter a site URL"}</div>
               <div>ProfileGrid API: {derived.profilegridApiUrl || "Enter a site URL"}</div>
               <div>Account Login URL: {derived.accountLoginUrl || "Enter a site URL"}</div>
+            </div>
+
+            {/* SMTP Server from library */}
+            <div>
+              <div className="theme-text-muted mb-1 text-sm font-medium">SMTP Server</div>
+              <select
+                value={form.smtpServerId}
+                onChange={(e) => setForm((prev) => ({ ...prev, smtpServerId: e.target.value }))}
+                className="theme-select px-3 py-2 text-sm w-full"
+              >
+                <option value="">— Use app default SMTP —</option>
+                {smtpServers.map((s) => (
+                  <option key={s.id} value={String(s.id)}>
+                    {s.label} ({s.host}:{s.port})
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs theme-text-soft mt-1">
+                Select a server from the library to assign it to this site.{" "}
+                <a href="/settings#smtp-library-form" className="underline">Manage SMTP library →</a>
+              </p>
+              {form.smtpServerId && (() => {
+                const s = smtpServers.find((x) => String(x.id) === form.smtpServerId);
+                return s ? (
+                  <div className="mt-2 rounded border px-3 py-2 text-xs theme-text-muted" style={{ borderColor: "var(--border)", background: "var(--panel-muted)" }}>
+                    <strong>{s.label}</strong> · {s.host}:{s.port} · {s.secure ? "SSL/TLS" : "STARTTLS"} · from {s.fromEmail}
+                  </div>
+                ) : null;
+              })()}
             </div>
 
             <details className="rounded border" style={{ borderColor: "var(--border)" }}>
