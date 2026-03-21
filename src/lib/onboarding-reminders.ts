@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { deactivateUser } from "@/lib/profilegrid-client";
 import {
+  discoverForgotPasswordUrl,
   getDefaultSiteRecord,
   getSiteEmailBranding,
   getMailerConfigForSite,
@@ -103,6 +104,7 @@ export async function runReminderCycle(
   const loginUrl = site.accountLoginUrl || process.env.ACCOUNT_LOGIN_URL || "https://your-site.com/login";
   const supportEmail = site.supportEmail || process.env.SUPPORT_EMAIL || "support@yourdomain.com";
   const emailBranding = await getSiteEmailBranding(site);
+  const forgotPassword = await discoverForgotPasswordUrl(site);
   const footerImageUrl =
     emailBranding.footerImageUrl ||
     emailBranding.logoUrl ||
@@ -239,6 +241,7 @@ export async function runReminderCycle(
               primaryColor: emailBranding.primaryColor,
               logoUrl: emailBranding.logoUrl,
               compactHeaderLogo: emailBranding.compactHeaderLogo,
+              forgotPasswordUrl: forgotPassword.url || undefined,
             },
             hadLoginActivity
           );
@@ -308,6 +311,7 @@ export async function runReminderCycle(
         primaryColor: emailBranding.primaryColor,
         logoUrl: emailBranding.logoUrl,
         compactHeaderLogo: emailBranding.compactHeaderLogo,
+        forgotPasswordUrl: forgotPassword.url || undefined,
       };
 
       const emailPayload =

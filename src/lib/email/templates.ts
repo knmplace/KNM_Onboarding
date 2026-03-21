@@ -36,6 +36,7 @@ interface ReminderEmailContext {
   primaryColor?: string;
   logoUrl?: string;
   compactHeaderLogo?: boolean;
+  forgotPasswordUrl?: string;
 }
 
 const DEFAULT_SITE_NAME = process.env.DEFAULT_SITE_NAME || "My Site";
@@ -660,6 +661,11 @@ export function noLoginReminderEmail(
         <div class="cta-wrap">
           <a href="${context.loginUrl}" class="btn btn-primary">Log In and Update Password</a>
         </div>
+        ${
+          context.forgotPasswordUrl
+            ? `<p class="support">Forgot your password? <a href="${context.forgotPasswordUrl}">Reset it here</a>.</p>`
+            : ""
+        }
         <p class="support">If you need assistance, contact <a href="mailto:${context.supportEmail}">${context.supportEmail}</a>.</p>
         ${footerImageBlock(context.footerImageUrl, context.siteName)}
       </td>
@@ -723,6 +729,11 @@ export function loggedInPasswordReminderEmail(
         <div class="cta-wrap">
           <a href="${context.loginUrl}" class="btn btn-primary">Change Password Now</a>
         </div>
+        ${
+          context.forgotPasswordUrl
+            ? `<p class="support">Forgot your password? <a href="${context.forgotPasswordUrl}">Reset it here</a>.</p>`
+            : ""
+        }
         <p class="support">If you need assistance, contact <a href="mailto:${context.supportEmail}">${context.supportEmail}</a>.</p>
         ${footerImageBlock(context.footerImageUrl, context.siteName)}
       </td>

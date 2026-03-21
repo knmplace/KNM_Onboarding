@@ -50,6 +50,16 @@ export type SiteEmailBranding = {
   compactHeaderLogo?: boolean;
 };
 
+export type ForgotPasswordDiscovery = {
+  url: string | null;
+  source:
+    | "login_link"
+    | "login_text_link"
+    | "wp_default"
+    | "woocommerce_default"
+    | "none";
+};
+
 export const siteCreateSchema = z.object({
   name: z.string().trim().min(2).max(100),
   siteUrl: z.string().trim().url(),
@@ -170,6 +180,86 @@ function extractPrimaryColor(html: string): string | null {
   }
 
   return null;
+}
+
+function findForgotPasswordUrl(
+  html: string,
+  baseUrl: string
+): ForgotPasswordDiscovery {
+  const hrefPatterns = [
+    /<a[^>]+href=["']([^"']*(?:lostpassword|forgot-password|forgot_password|reset-password|password-reset)[^"']*)["'][^>]*>/gi,
+    /<a[^>]+href=["']([^"']+)["'][^>]*>[\s\S]{0,120}?(?:forgot password|lost password|reset password)[\s\S]{0,120}?<\/a>/gi,
+  ];
+
+  for (const pattern of hrefPatterns) {
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(html)) !== null) {
+      const candidate = match[1];
+      try {
+        return {
+          url: new URL(candidate, baseUrl).toString(),
+          source: pattern === hrefPatterns[0] ? "login_link" : "login_text_link",
+        };
+      } catch {
+        continue;
+      }
+    }
+  }
+
+  return { url: null, source: "none" };
+}
+
+export async function discoverForgotPasswordUrl(site: {
+  accountLoginUrl: string | null;
+  wordpressUrl: string | null;
+}): Promise<ForgotPasswordDiscovery> {
+  const loginUrl = site.accountLoginUrl || null;
+  if (loginUrl) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+    try {
+      const response = await fetch(loginUrl, {
+        signal: controller.signal,
+        headers: {
+          "User-Agent": "OnboardingForgotPasswordDiscovery/1.0",
+        },
+      });
+
+      if (response.ok) {
+        const html = await response.text();
+        const discovered = findForgotPasswordUrl(html, loginUrl);
+        if (discovered.url) {
+          return discovered;
+        }
+      }
+    } catch {
+      // fall through to deterministic defaults below
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  const siteUrl = site.wordpressUrl || null;
+  if (siteUrl) {
+    try {
+      return {
+        url: new URL("/wp-login.php?action=lostpassword", siteUrl).toString(),
+        source: "wp_default",
+      };
+    } catch {
+      try {
+        return {
+          url: new URL("/my-account/lost-password", siteUrl).toString(),
+          source: "woocommerce_default",
+        };
+      } catch {
+        // continue
+      }
+    }
+  }
+
+  return { url: null, source: "none" };
 }
 
 export async function discoverSiteBranding(

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import {
+  discoverForgotPasswordUrl,
   getMailerConfigForSite,
   getProfileGridConfigForSite,
   getWpConfigForSite,
@@ -47,6 +48,14 @@ export async function POST(
 
       const trackerCheck = await checkOnboardingTrackerSupport(wpConfig);
       results.tracker = trackerCheck;
+
+      const forgotPassword = await discoverForgotPasswordUrl(site);
+      results.forgot_password = {
+        ok: Boolean(forgotPassword.url),
+        detail: forgotPassword.url
+          ? `Resolved ${forgotPassword.url} (${forgotPassword.source}).`
+          : "No forgot-password URL could be discovered.",
+      };
     } catch (error) {
       results.wordpress = {
         ok: false,
@@ -56,6 +65,11 @@ export async function POST(
         ok: false,
         detail:
           "Tracker check was skipped because WordPress connectivity did not succeed.",
+      };
+      results.forgot_password = {
+        ok: false,
+        detail:
+          "Forgot-password discovery was skipped because WordPress/login connectivity did not succeed.",
       };
     }
 
