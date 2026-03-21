@@ -576,6 +576,11 @@ info "Installing npm dependencies..."
 npm install --include=dev
 success "Dependencies installed."
 
+# Run safe audit fixes (no --force — never allow breaking changes during deploy)
+info "Running npm audit fix (safe fixes only)..."
+npm audit fix --audit-level=high 2>&1 | grep -v "^npm warn" || true
+success "Audit fix complete."
+
 # Now bcrypt is available — hash the user-chosen PIN.
 # IMPORTANT: bcrypt hashes contain $ characters (e.g. $2b$10$...).
 # Write with single quotes in .env.local so dotenvx does NOT interpolate them.

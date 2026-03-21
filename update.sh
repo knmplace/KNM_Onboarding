@@ -111,6 +111,11 @@ header "Installing Dependencies"
 npm install --include=dev
 success "Dependencies up to date."
 
+# Run safe audit fixes (no --force — never allow breaking changes during update)
+info "Running npm audit fix (safe fixes only)..."
+npm audit fix --audit-level=high 2>&1 | grep -v "^npm warn" || true
+success "Audit fix complete."
+
 # ─── Prisma ──────────────────────────────────────────────────────────────────
 header "Running Database Migrations"
 
