@@ -4,9 +4,7 @@ import { cookies } from "next/headers";
 import { hash } from "bcrypt";
 import fs from "fs";
 import path from "path";
-import { PrismaClient } from "@/generated/prisma";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/db";
 
 const SETUP_TOKEN_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "setup-fallback-secret-change-this"
