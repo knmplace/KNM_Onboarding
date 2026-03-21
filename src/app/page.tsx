@@ -408,6 +408,12 @@ export default function Dashboard() {
           >
             Sites
           </Link>
+          <Link
+            href="/settings"
+            className="theme-button theme-button--ghost px-3 py-1.5 text-sm"
+          >
+            Settings
+          </Link>
           <ThemeToggle />
         </div>
       </div>

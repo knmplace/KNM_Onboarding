@@ -71,8 +71,8 @@ export const siteCreateSchema = z.object({
     .max(50)
     .optional()
     .or(z.literal("")),
-  wordpressUsername: z.string().trim().min(1).max(100),
-  wordpressAppPassword: z.string().trim().min(1).max(200),
+  wordpressUsername: z.string().trim().max(100).optional().or(z.literal("")),
+  wordpressAppPassword: z.string().trim().max(200).optional().or(z.literal("")),
   supportEmail: z.string().trim().email().optional().or(z.literal("")),
   accountLoginUrl: z.string().trim().url().optional().or(z.literal("")),
   smtpHost: z.string().trim().max(200).optional().or(z.literal("")),

@@ -486,18 +486,21 @@ export default function SitesPage() {
 
             <div className="grid sm:grid-cols-2 gap-4">
               <label className="text-sm">
-                <div className="theme-text-muted mb-1">WordPress Username</div>
+                <div className="theme-text-muted mb-1">
+                  WordPress Username <span className="text-xs theme-text-soft">(optional)</span>
+                </div>
                 <input
                   value={form.wordpressUsername}
                   onChange={(e) =>
                     setForm((prev) => ({ ...prev, wordpressUsername: e.target.value }))
                   }
                   className="theme-input px-3 py-2"
-                  required
                 />
               </label>
               <label className="text-sm">
-                <div className="theme-text-muted mb-1">WordPress App Password</div>
+                <div className="theme-text-muted mb-1">
+                  WordPress App Password <span className="text-xs theme-text-soft">(optional)</span>
+                </div>
                 <input
                   type="password"
                   value={form.wordpressAppPassword}
@@ -505,7 +508,6 @@ export default function SitesPage() {
                     setForm((prev) => ({ ...prev, wordpressAppPassword: e.target.value }))
                   }
                   className="theme-input px-3 py-2"
-                  required
                 />
               </label>
             </div>
@@ -537,6 +539,41 @@ export default function SitesPage() {
                       className="theme-input px-3 py-2"
                     />
                   </label>
+                </div>
+
+                <div>
+                  <div className="theme-text-muted mb-1 text-sm">SMTP Provider Preset</div>
+                  <select
+                    value=""
+                    onChange={(e) => {
+                      const presets: Record<string, { host: string; port: string; secure: boolean }> = {
+                        "Gmail (SSL)": { host: "smtp.gmail.com", port: "465", secure: true },
+                        "Gmail (STARTTLS)": { host: "smtp.gmail.com", port: "587", secure: false },
+                        "Outlook / Office 365": { host: "smtp.office365.com", port: "587", secure: false },
+                        "Yahoo Mail": { host: "smtp.mail.yahoo.com", port: "465", secure: true },
+                        "SendGrid": { host: "smtp.sendgrid.net", port: "465", secure: true },
+                        "Mailgun": { host: "smtp.mailgun.org", port: "465", secure: true },
+                        "Brevo (Sendinblue)": { host: "smtp-relay.brevo.com", port: "587", secure: false },
+                        "Postmark": { host: "smtp.postmarkapp.com", port: "587", secure: false },
+                        "Amazon SES (US East)": { host: "email-smtp.us-east-1.amazonaws.com", port: "465", secure: true },
+                      };
+                      const p = presets[e.target.value];
+                      if (p) setForm((prev) => ({ ...prev, smtpHost: p.host, smtpPort: p.port, smtpSecure: p.secure }));
+                    }}
+                    className="theme-select px-3 py-2 text-sm w-full"
+                  >
+                    <option value="">— Select provider to pre-fill —</option>
+                    <option value="Gmail (SSL)">Gmail (SSL port 465)</option>
+                    <option value="Gmail (STARTTLS)">Gmail (STARTTLS port 587)</option>
+                    <option value="Outlook / Office 365">Outlook / Office 365</option>
+                    <option value="Yahoo Mail">Yahoo Mail</option>
+                    <option value="SendGrid">SendGrid</option>
+                    <option value="Mailgun">Mailgun</option>
+                    <option value="Brevo (Sendinblue)">Brevo (Sendinblue)</option>
+                    <option value="Postmark">Postmark</option>
+                    <option value="Amazon SES (US East)">Amazon SES (US East)</option>
+                  </select>
+                  <p className="text-xs theme-text-soft mt-1">For Gmail/Yahoo, use an App Password — not your account password.</p>
                 </div>
 
                 <div className="grid sm:grid-cols-2 gap-4">

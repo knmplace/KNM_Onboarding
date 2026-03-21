@@ -28,9 +28,19 @@ function generateMachineKey() {
     .slice(2)}${Date.now().toString(36)}`;
 }
 
+function slugify(value) {
+  if (!value) return null;
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 50) || null;
+}
+
 function getSeed() {
   return {
-    slug: clean(process.env.DEFAULT_SITE_SLUG) || "my-site",
+    slug: slugify(process.env.DEFAULT_SITE_SLUG) || "my-site",
     name: clean(process.env.DEFAULT_SITE_NAME) || "My Site",
     onboardingAppUrl: clean(process.env.NEXT_PUBLIC_APP_URL),
     accountLoginUrl:
