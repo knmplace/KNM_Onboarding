@@ -8,10 +8,10 @@ const JWT_SECRET = new TextEncoder().encode(
 const COOKIE_NAME = "onboarding-session";
 
 export interface SessionPayload {
-  wordpressId: string;
+  adminId: string;
   email: string;
   displayName: string;
-  roles: string[];
+  role: "OWNER" | "ADMIN";
   isAdmin: boolean;
   expiresAt: number;
 }

@@ -1,54 +1,57 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { jwtVerify } from "jose";
 
-/**
- * Setup Wizard Middleware
- *
- * If SETUP_REQUIRED=true is set in the environment (written by deploy.sh when
- * credentials were skipped), all routes are redirected to /setup until the
- * setup wizard completes and the app restarts.
- *
- * The /setup page and all /api/setup/* routes are always excluded from redirect.
- */
+const JWT_SECRET = new TextEncoder().encode(
+  process.env.JWT_SECRET || "fallback-secret-change-in-production"
+);
 
-const EXCLUDED_PREFIXES = [
+// Paths that never require authentication
+const PUBLIC_PREFIXES = [
+  "/login",
   "/setup",
   "/api/setup",
+  "/api/auth",
   "/_next",
   "/favicon.ico",
   "/images",
   "/fonts",
 ];
 
-function isExcluded(pathname: string): boolean {
-  return EXCLUDED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+function isPublic(pathname: string): boolean {
+  return PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Never intercept excluded paths
-  if (isExcluded(pathname)) {
-    return NextResponse.next();
+  // ── 1. Setup redirect — always takes priority ─────────────────────────────
+  if (!pathname.startsWith("/setup") && !pathname.startsWith("/api/setup") &&
+      !pathname.startsWith("/_next") && !pathname.startsWith("/favicon.ico")) {
+    if (process.env.SETUP_REQUIRED === "true") {
+      return NextResponse.redirect(new URL("/setup", request.url));
+    }
   }
 
-  // If setup is required, redirect everything to /setup
-  if (process.env.SETUP_REQUIRED === "true") {
-    const setupUrl = new URL("/setup", request.url);
-    return NextResponse.redirect(setupUrl);
+  // ── 2. Auth guard — protect all non-public routes ─────────────────────────
+  if (!isPublic(pathname)) {
+    const token = request.cookies.get("onboarding-session")?.value;
+    if (!token) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+    try {
+      await jwtVerify(token, JWT_SECRET, { algorithms: ["HS256"] });
+    } catch {
+      // Token invalid or expired — clear cookie and redirect
+      const res = NextResponse.redirect(new URL("/login", request.url));
+      res.cookies.delete("onboarding-session");
+      return res;
+    }
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization)
-     * - favicon.ico
-     */
-    "/((?!_next/static|_next/image|favicon.ico).*)",
-  ],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };

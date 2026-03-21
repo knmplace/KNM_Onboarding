@@ -14,10 +14,10 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       user: {
-        wordpressId: session.wordpressId,
+        adminId: session.adminId,
         email: session.email,
         displayName: session.displayName,
-        roles: session.roles,
+        role: session.role,
         isAdmin: session.isAdmin,
       },
     });

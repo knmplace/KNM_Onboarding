@@ -1,84 +1,49 @@
 import { NextRequest, NextResponse } from "next/server";
+import { compare } from "bcrypt";
 import { createSession, setSessionCookie } from "@/lib/auth";
+import { PrismaClient } from "@/generated/prisma";
 
-interface WpMeResponse {
-  id: number;
-  email: string;
-  name: string;
-  roles: string[];
-}
+const prisma = new PrismaClient();
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const username =
-      typeof body.username === "string" ? body.username.trim() : "";
+    const email =
+      typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
     const password =
-      typeof body.password === "string" ? body.password.trim() : "";
+      typeof body.password === "string" ? body.password : "";
 
-    if (!username || !password) {
+    if (!email || !password) {
       return NextResponse.json(
-        { success: false, message: "Username and password are required" },
+        { success: false, message: "Email and password are required" },
         { status: 400 }
       );
     }
 
-    const wpRestUrl = process.env.WORDPRESS_REST_API_URL;
-    if (!wpRestUrl) {
-      return NextResponse.json(
-        { success: false, message: "WORDPRESS_REST_API_URL not configured" },
-        { status: 500 }
-      );
-    }
+    // ── Local admin authentication ────────────────────────────────────────────
+    const admin = await prisma.adminUser.findUnique({ where: { email } });
 
-    const credentials = Buffer.from(`${username}:${password}`).toString("base64");
-    const response = await fetch(`${wpRestUrl}/users/me?context=edit`, {
-      headers: { Authorization: `Basic ${credentials}` },
-    });
-
-    if (response.status === 401 || response.status === 403) {
-      let wpMessage = "";
-      try {
-        const err = (await response.json()) as { message?: string; code?: string };
-        wpMessage = err.message || err.code || "";
-      } catch {
-        wpMessage = "";
-      }
+    if (!admin) {
       return NextResponse.json(
-        {
-          success: false,
-          message: wpMessage
-            ? `WordPress rejected credentials: ${wpMessage}`
-            : "Invalid credentials. Use your WordPress username and an Application Password.",
-        },
+        { success: false, message: "Invalid email or password" },
         { status: 401 }
       );
     }
 
-    if (!response.ok) {
+    const valid = await compare(password, admin.passwordHash);
+    if (!valid) {
       return NextResponse.json(
-        { success: false, message: `WordPress auth failed (${response.status})` },
-        { status: 502 }
-      );
-    }
-
-    const user = (await response.json()) as WpMeResponse;
-    const roles = Array.isArray(user.roles) ? user.roles : [];
-    const isAdmin = roles.includes("administrator");
-
-    if (!isAdmin) {
-      return NextResponse.json(
-        { success: false, message: "Admin access required" },
-        { status: 403 }
+        { success: false, message: "Invalid email or password" },
+        { status: 401 }
       );
     }
 
     const token = await createSession({
-      wordpressId: user.id.toString(),
-      email: user.email,
-      displayName: user.name || username,
-      roles,
-      isAdmin,
+      adminId: admin.id.toString(),
+      email: admin.email,
+      displayName: `${admin.firstName} ${admin.lastName}`.trim(),
+      role: admin.role as "OWNER" | "ADMIN",
+      isAdmin: true,
     });
 
     await setSessionCookie(token);
@@ -86,28 +51,53 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       user: {
-        wordpressId: user.id.toString(),
-        email: user.email,
-        displayName: user.name || username,
-        roles,
-        isAdmin,
+        adminId: admin.id.toString(),
+        email: admin.email,
+        displayName: `${admin.firstName} ${admin.lastName}`.trim(),
+        role: admin.role,
+        isAdmin: true,
       },
     });
+
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    const isNetworkError =
-      message.includes("fetch failed") ||
-      message.includes("ECONNREFUSED") ||
-      message.includes("ENOTFOUND") ||
-      message.includes("ETIMEDOUT");
+    console.error("[auth/login]", err);
     return NextResponse.json(
-      {
-        success: false,
-        message: isNetworkError
-          ? `Cannot reach WordPress: ${message}`
-          : "Internal server error",
-      },
+      { success: false, message: "Internal server error" },
       { status: 500 }
     );
   }
 }
+
+// ── WordPress login (kept for future use, currently not active) ───────────────
+//
+// To re-enable WordPress-based admin login, uncomment the block below and
+// replace the local auth block above with a call to wpLogin().
+//
+// interface WpMeResponse {
+//   id: number;
+//   email: string;
+//   name: string;
+//   roles: string[];
+// }
+//
+// async function wpLogin(username: string, password: string) {
+//   const wpRestUrl = process.env.WORDPRESS_REST_API_URL;
+//   if (!wpRestUrl) throw new Error("WORDPRESS_REST_API_URL not configured");
+//
+//   const credentials = Buffer.from(`${username}:${password}`).toString("base64");
+//   const response = await fetch(`${wpRestUrl}/users/me?context=edit`, {
+//     headers: { Authorization: `Basic ${credentials}` },
+//   });
+//
+//   if (response.status === 401 || response.status === 403) {
+//     const err = await response.json().catch(() => ({})) as { message?: string };
+//     throw Object.assign(new Error(err.message || "Invalid credentials"), { status: 401 });
+//   }
+//   if (!response.ok) throw Object.assign(new Error(`WordPress auth failed (${response.status})`), { status: 502 });
+//
+//   const user = await response.json() as WpMeResponse;
+//   if (!Array.isArray(user.roles) || !user.roles.includes("administrator")) {
+//     throw Object.assign(new Error("Admin access required"), { status: 403 });
+//   }
+//   return user;
+// }
