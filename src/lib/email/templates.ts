@@ -84,8 +84,8 @@ const baseStyle = `
   .btn-green { background: #15803d; color: #ffffff; }
   .support { margin: 8px 0 0; font-size: 13px; line-height: 1.6; color: #475569; text-align: center; }
   .divider { border-top: 1px solid #dbe3ee; margin: 18px 0 0; }
-  .logo-wrap { text-align: center; padding: 18px 0 2px; }
-  .logo-img { width: 190px; max-width: 190px; height: 110px; max-height: 110px; object-fit: contain; display: inline-block; }
+  .logo-wrap { text-align: center; padding: 10px 0 2px; }
+  .logo-img { width: 150px; max-width: 150px; height: 87px; max-height: 87px; object-fit: contain; display: inline-block; }
   .footer { text-align: center; font-size: 12px; color: #64748b; padding: 10px 0 24px; }
   .header { text-align: center; margin-bottom: 18px; }
   .header h1 { font-size: 22px; color: #1a1a1a; margin: 0; }
@@ -158,19 +158,19 @@ function brandBar(branding?: Partial<EmailBranding>): string {
     <div class="brand">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td align="center">
+          <td align="left" style="padding: 0;">
             <table role="presentation" cellpadding="0" cellspacing="0" border="0">
               <tr>
-                <td width="52" valign="middle">
+                <td width="60" valign="middle" style="padding: 0;">
                   <div class="brand-logo">
                     ${
                       logoUrl
-                        ? `<img src="${logoUrl}" alt="${resolved.siteName} logo" class="brand-logo-img" width="40" height="40" />`
+                        ? `<img src="${logoUrl}" alt="${resolved.siteName} logo" class="brand-logo-img" width="60" height="60" />`
                         : `<span class="brand-logo-fallback">${initial}</span>`
                     }
                   </div>
                 </td>
-                <td valign="middle" align="center">
+                <td valign="middle" align="left" style="padding-left: 10px;">
                   <div class="brand-name">${resolved.siteName} Secure Onboarding</div>
                 </td>
               </tr>
@@ -192,7 +192,7 @@ function wrap(content: string, branding?: Partial<EmailBranding>): string {
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><style>${baseStyle}
   .brand { background: ${primaryDark}; }
-  .brand-logo { width: 40px; height: 40px; border-radius: 10px; background: #ffffff; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; }
+  .brand-logo { width: 60px; height: 60px; border-radius: 0; background: transparent; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; }
   .brand-logo-img { width: 100%; height: 100%; object-fit: contain; display: block; }
   .brand-wordmark-img { width: 152px; max-width: 152px; height: 56px; max-height: 56px; object-fit: contain; display: block; }
   .brand-logo-fallback { color: ${primaryDark}; font-size: 18px; font-weight: 800; line-height: 1; }
@@ -602,7 +602,7 @@ function reminderHistoryBlock(
 
 function footerImageBlock(url?: string, alt = DEFAULT_SITE_NAME): string {
   if (!url) return "";
-  return `<div class="divider"></div><div class="logo-wrap"><img src="${url}" alt="${alt}" class="logo-img" width="190" height="110" /></div>`;
+  return `<div class="divider"></div><div class="logo-wrap"><img src="${url}" alt="${alt}" class="logo-img" width="150" height="87" /></div>`;
 }
 
 function contentLogoBlock(branding?: Partial<EmailBranding>): string {
