@@ -66,9 +66,44 @@ export default function SettingsPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [settingDefaultId, setSettingDefaultId] = useState<number | null>(null);
 
+  // Abstract API state
+  const [abstractApiKey, setAbstractApiKey] = useState("");
+  const [abstractConfigured, setAbstractConfigured] = useState(false);
+  const [abstractSaving, setAbstractSaving] = useState(false);
+
   // Shared notices
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  // ── Load Abstract API status ─────────────────────────────────────────────────
+  useEffect(() => {
+    fetch("/api/settings/abstract-api")
+      .then((r) => r.json())
+      .then((d) => setAbstractConfigured(!!d.configured))
+      .catch(() => {});
+  }, []);
+
+  async function handleSaveAbstractKey(e: React.FormEvent) {
+    e.preventDefault();
+    setAbstractSaving(true);
+    setError(null); setNotice(null);
+    try {
+      const res = await fetch("/api/settings/abstract-api", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiKey: abstractApiKey }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to save.");
+      setAbstractConfigured(true);
+      setAbstractApiKey("");
+      setNotice("Abstract API key saved. Email validation is now active.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save.");
+    } finally {
+      setAbstractSaving(false);
+    }
+  }
 
   // ── Load SMTP library ────────────────────────────────────────────────────────
   async function fetchServers() {
@@ -419,6 +454,53 @@ export default function SettingsPage() {
               </div>
             </form>
           </div>
+        </div>
+      </section>
+
+      {/* ── Abstract API ── */}
+      <section className="mt-10">
+        <h2 className="text-xl font-semibold mb-1">Abstract API — Email Validation</h2>
+        <p className="text-sm theme-text-muted mb-4">
+          Used to validate email quality and detect disposable addresses during user sync.{" "}
+          <a href="https://www.abstractapi.com/api/email-validation-verification-api" target="_blank" rel="noopener noreferrer" className="underline" style={{ color: "var(--accent)" }}>
+            Get a free API key
+          </a>
+          .
+        </p>
+
+        <div className="theme-card max-w-lg p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-sm font-medium">Status:</span>
+            {abstractConfigured ? (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold" style={{ background: "var(--success-bg, #d1fae5)", color: "var(--success-text, #065f46)" }}>
+                ✓ Configured
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold" style={{ background: "var(--panel-strong)", color: "var(--text-muted)" }}>
+                Not configured
+              </span>
+            )}
+          </div>
+
+          <form onSubmit={handleSaveAbstractKey} className="space-y-4">
+            <div>
+              <label className={labelClass}>
+                API Key{abstractConfigured && <span className="text-xs theme-text-soft ml-1">(enter new key to replace)</span>}
+              </label>
+              <input
+                type="password"
+                value={abstractApiKey}
+                onChange={(e) => setAbstractApiKey(e.target.value)}
+                placeholder={abstractConfigured ? "Enter new key to replace existing" : "Paste your Abstract API key"}
+                className={inputClass}
+                autoComplete="new-password"
+                required
+              />
+            </div>
+            <button type="submit" disabled={abstractSaving} className="theme-button theme-button--primary px-4 py-2 text-sm disabled:opacity-50">
+              {abstractSaving ? "Saving..." : "Save API Key"}
+            </button>
+          </form>
         </div>
       </section>
     </main>

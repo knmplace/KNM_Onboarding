@@ -68,7 +68,7 @@ export async function GET() {
         id: "abstractapi",
         label: "Add Abstract API key (email validation)",
         done: hasAbstractApi,
-        link: "/sites",
+        link: "/settings",
         description: "Optional but recommended. Validates email quality and detects breached accounts.",
         optional: true,
       },
