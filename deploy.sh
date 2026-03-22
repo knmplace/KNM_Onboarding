@@ -30,6 +30,7 @@ header()  { echo -e "\n${BOLD}${BLUE}══════════════�
 prompt()       { read -rp "$(echo -e "${BOLD}$1${RESET} ") " "$2"; }
 prompt_secret(){ read -rsp "$(echo -e "${BOLD}$1${RESET} ") " "$2"; echo; }
 prompt_yn()    { read -rp "$(echo -e "${BOLD}$1 [y/N]${RESET} ") " _yn; [[ "${_yn,,}" == "y" ]]; }
+prompt_yn_yes(){ read -rp "$(echo -e "${BOLD}$1 [Y/n]${RESET} ") " _yn; [[ -z "${_yn}" || "${_yn,,}" == "y" ]]; }
 
 SETUP_REQUIRED=false
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -77,7 +78,7 @@ echo -e "${BLUE}  ℹ  Install location:${RESET} The app will be installed to /o
 echo "     regardless of where you cloned or are running this script from."
 echo
 
-if ! prompt_yn "Continue with installation?"; then
+if ! prompt_yn_yes "Continue with installation?"; then
   echo "Installation cancelled."
   exit 0
 fi
