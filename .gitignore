@@ -62,3 +62,4 @@ PROJECT_PROGRESS.md
 # Local SSH/dev notes — never commit (contains server IPs and auth hints)
 .ssh.env
 .claude-ssh.md
+.github-token
