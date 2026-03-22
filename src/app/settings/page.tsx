@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { APP_VERSION } from "@/lib/version";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -70,6 +71,11 @@ export default function SettingsPage() {
   const [abstractApiKey, setAbstractApiKey] = useState("");
   const [abstractConfigured, setAbstractConfigured] = useState(false);
   const [abstractSaving, setAbstractSaving] = useState(false);
+
+  // Update state
+  const [updating, setUpdating] = useState(false);
+  const [updateNotice, setUpdateNotice] = useState<string | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
 
   // Shared notices
   const [error, setError] = useState<string | null>(null);
@@ -231,6 +237,23 @@ export default function SettingsPage() {
       setError(err instanceof Error ? err.message : "Failed to delete.");
     } finally {
       setDeletingId(null);
+    }
+  }
+
+  async function handleUpdate() {
+    if (!confirm("Start an update now?\n\nThis will:\n• Pull the latest code from GitHub\n• Run database migrations\n• Rebuild the app\n• Restart the server automatically\n\nThe app will be unavailable for 2–5 minutes during the update. Continue?")) return;
+    setUpdating(true);
+    setUpdateError(null);
+    setUpdateNotice(null);
+    try {
+      const res = await fetch("/api/admin/update", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to start update.");
+      setUpdateNotice("Update started. The app will rebuild and restart automatically — this takes 2–5 minutes. You may need to refresh your browser after it comes back online.");
+    } catch (err) {
+      setUpdateError(err instanceof Error ? err.message : "Failed to start update.");
+    } finally {
+      setUpdating(false);
     }
   }
 
@@ -454,6 +477,52 @@ export default function SettingsPage() {
               </div>
             </form>
           </div>
+        </div>
+      </section>
+
+      {/* ── App Update ── */}
+      <section className="mt-10">
+        <h2 className="text-xl font-semibold mb-1">App Update</h2>
+        <p className="text-sm theme-text-muted mb-4">
+          Pull the latest version of Homestead from GitHub and rebuild the app on this server.
+        </p>
+
+        <div className="theme-card max-w-2xl p-5">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="text-sm theme-text-muted">Current version:</span>
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold" style={{ background: "var(--panel-strong)", color: "var(--text)" }}>
+              v{APP_VERSION}
+            </span>
+          </div>
+
+          <div className="theme-card p-4 mb-5 text-sm space-y-1" style={{ background: "var(--panel-strong)" }}>
+            <p className="font-medium mb-2">What the update does:</p>
+            <p className="theme-text-muted">1. Pulls the latest code from GitHub into <code className="px-1 rounded text-xs" style={{ background: "var(--bg)" }}>/opt/homestead-src</code></p>
+            <p className="theme-text-muted">2. Backs up your <code className="px-1 rounded text-xs" style={{ background: "var(--bg)" }}>.env.local</code> — your credentials are never touched</p>
+            <p className="theme-text-muted">3. Syncs new code files to <code className="px-1 rounded text-xs" style={{ background: "var(--bg)" }}>/opt/homestead</code></p>
+            <p className="theme-text-muted">4. Runs any new database migrations (non-destructive — no data loss)</p>
+            <p className="theme-text-muted">5. Rebuilds the app</p>
+            <p className="theme-text-muted">6. Restarts the server automatically via PM2</p>
+            <p className="mt-3 font-medium" style={{ color: "var(--warning-text, #92400e)" }}>
+              ⚠ The app will be unavailable for approximately 2–5 minutes during the update.
+            </p>
+          </div>
+
+          {updateNotice && (
+            <div className="theme-alert theme-alert--success mb-4">{updateNotice}</div>
+          )}
+          {updateError && (
+            <div className="theme-alert theme-alert--error mb-4">{updateError}</div>
+          )}
+
+          <button
+            type="button"
+            onClick={handleUpdate}
+            disabled={updating}
+            className="theme-button theme-button--primary px-5 py-2 text-sm disabled:opacity-50"
+          >
+            {updating ? "Starting update..." : "Update Homestead"}
+          </button>
         </div>
       </section>
 

@@ -301,13 +301,33 @@ INTERNAL_API_BASE="${NEXT_PUBLIC_APP_URL}"
 # ─── Phase 4: Install app ─────────────────────────────────────────────────────
 header "Phase 4: Installing Homestead"
 
-# Copy app files to install dir (deploy.sh lives in the project root)
-if [[ "$SCRIPT_DIR" != "$INSTALL_DIR" ]]; then
+# Move the source clone to /opt/homestead-src so update.sh always knows
+# where to find it, regardless of where the user originally cloned to.
+SRC_DIR="/opt/homestead-src"
+if [[ "$SCRIPT_DIR" != "$SRC_DIR" && "$SCRIPT_DIR" != "$INSTALL_DIR" ]]; then
+  info "Moving source to ${SRC_DIR} for future updates..."
+  mkdir -p "$SRC_DIR"
+  rsync -a --exclude='node_modules' --exclude='.next' --exclude='logs' \
+    "${SCRIPT_DIR}/" "${SRC_DIR}/"
+  success "Source moved to ${SRC_DIR}."
+  # Clean up original clone location if it's outside /opt to avoid clutter
+  if [[ "$SCRIPT_DIR" != /opt/* ]]; then
+    info "Cleaning up original clone at ${SCRIPT_DIR}..."
+    rm -rf "$SCRIPT_DIR"
+    success "Original clone removed."
+  fi
+elif [[ "$SCRIPT_DIR" == "$SRC_DIR" ]]; then
+  info "Already running from ${SRC_DIR} — no move needed."
+fi
+
+# Copy app files to install dir (source of truth is now /opt/homestead-src)
+SOURCE="${SRC_DIR:-$SCRIPT_DIR}"
+if [[ "$SOURCE" != "$INSTALL_DIR" ]]; then
   info "Copying app files to ${INSTALL_DIR}..."
   mkdir -p "$INSTALL_DIR"
   rsync -a --exclude='.git' --exclude='node_modules' --exclude='.next' \
     --exclude='.env.local' --exclude='.env' --exclude='logs' --exclude='backups' \
-    "${SCRIPT_DIR}/" "${INSTALL_DIR}/"
+    "${SOURCE}/" "${INSTALL_DIR}/"
   success "Files copied."
 else
   info "Running from install directory — skipping copy."

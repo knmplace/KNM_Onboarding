@@ -2,6 +2,22 @@
 
 ---
 
+## [2.3.0] — 2026-03-22
+
+### Added
+- **UI Update button** — Settings page now has an "App Update" section with a clear description of what the update does, a warning about downtime, and a one-click "Update Homestead" button
+- **`POST /api/admin/update`** — authenticated API route that triggers `update.sh` in the background and responds immediately; update log written to `/opt/homestead/logs/update.log`
+- **`/opt/homestead-src`** — deploy.sh now moves the source clone to `/opt/homestead-src` regardless of where the user originally cloned, eliminating the messy `/homestead` in filesystem root
+
+### Changed
+- **deploy.sh**: source clone is automatically relocated to `/opt/homestead-src` after deploy; original clone folder outside `/opt` is cleaned up automatically
+- **update.sh**: fully rewritten for Homestead naming; pulls from `/opt/homestead-src` git repo before syncing; all `adob` references replaced
+
+### Fixed
+- **Clone location pollution**: users running `git clone` from `/` root no longer left with a `/homestead` directory after deploy
+
+---
+
 ## [2.2.0] — 2026-03-22
 
 ### Changed

@@ -1,22 +1,23 @@
 #!/bin/bash
 # =============================================================================
-# ADOB — Update Script
-# Safe, non-destructive update for an existing ADOB installation.
+# Homestead — Update Script
+# Safe, non-destructive update for an existing Homestead installation.
 #
-# Usage (run from the cloned repo directory):
+# Usage (run from anywhere — script finds the install automatically):
 #   bash update.sh
 #
 # What this script does:
-#   1. Detects an existing install via /opt/adob/.env.local
-#   2. Backs up .env.local before touching anything
-#   3. Stops the PM2 process gracefully
-#   4. Rsyncs code files only (never touches .env.local, node_modules, logs)
-#   5. npm install (picks up new/changed dependencies)
-#   6. prisma generate + prisma db push (non-destructive schema migrations)
-#   7. npm run build
-#   8. pm2 restart
-#   9. Optionally restarts the webhook systemd service if it exists
-#  10. Prints a summary
+#   1. Detects existing install at /opt/homestead
+#   2. Pulls latest code into /opt/homestead-src
+#   3. Backs up .env.local before touching anything
+#   4. Stops the PM2 process gracefully
+#   5. Rsyncs code files only (never touches .env.local, node_modules, logs)
+#   6. npm install (picks up new/changed dependencies)
+#   7. prisma generate + prisma db push (non-destructive schema migrations)
+#   8. npm run build
+#   9. pm2 restart
+#  10. Optionally restarts the webhook systemd service if it exists
+#  11. Prints a summary
 # =============================================================================
 
 set -euo pipefail
@@ -31,10 +32,8 @@ warn()    { echo -e "${YELLOW}[WARN]${RESET}  $*"; }
 error()   { echo -e "${RED}[ERROR]${RESET} $*" >&2; }
 header()  { echo -e "\n${BOLD}${BLUE}══════════════════════════════════════════${RESET}"; echo -e "${BOLD} $* ${RESET}"; echo -e "${BOLD}${BLUE}══════════════════════════════════════════${RESET}\n"; }
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
 # ─── Preflight ───────────────────────────────────────────────────────────────
-header "ADOB Update — Pre-flight"
+header "Homestead Update — Pre-flight"
 
 if [[ $EUID -ne 0 ]]; then
   error "This script must be run as root or with sudo."
@@ -42,8 +41,8 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # ─── Detect existing install ─────────────────────────────────────────────────
-# Allow override via ADOB_INSTALL_DIR env var for non-default paths
-INSTALL_DIR="${ADOB_INSTALL_DIR:-/opt/adob}"
+INSTALL_DIR="/opt/homestead"
+SRC_DIR="/opt/homestead-src"
 ENV_FILE="${INSTALL_DIR}/.env.local"
 
 if [[ ! -f "$ENV_FILE" ]]; then
@@ -55,14 +54,27 @@ fi
 success "Found existing install at ${INSTALL_DIR}"
 
 # ─── Read config from existing .env.local ────────────────────────────────────
-# Extract PM2 app name and webhook port from the live .env.local
-PM2_APP_NAME=$(grep -E '^PM2_APP_NAME=' "$ENV_FILE" | cut -d'=' -f2- | tr -d '"' || echo "adob")
+PM2_APP_NAME=$(grep -E '^PM2_APP_NAME=' "$ENV_FILE" | cut -d'=' -f2- | tr -d '"' || echo "homestead")
 WEBHOOK_PORT=$(grep -E '^WEBHOOK_PORT=' "$ENV_FILE" | cut -d'=' -f2- | tr -d '"' || echo "9100")
 DATABASE_URL_VAL=$(grep -E '^DATABASE_URL=' "$ENV_FILE" | cut -d'=' -f2- | tr -d '"' || echo "")
 
-PM2_APP_NAME="${PM2_APP_NAME:-adob}"
+PM2_APP_NAME="${PM2_APP_NAME:-homestead}"
 info "PM2 process name: ${PM2_APP_NAME}"
-info "Webhook port: ${WEBHOOK_PORT}"
+info "Install directory: ${INSTALL_DIR}"
+info "Source directory:  ${SRC_DIR}"
+
+# ─── Pull latest code ────────────────────────────────────────────────────────
+header "Pulling Latest Code"
+
+if [[ -d "${SRC_DIR}/.git" ]]; then
+  info "Pulling latest from git in ${SRC_DIR}..."
+  cd "$SRC_DIR"
+  git pull
+  success "Source updated."
+else
+  warn "No git repo found at ${SRC_DIR} — skipping git pull."
+  warn "Code will be synced from current source directory only."
+fi
 
 # ─── Backup .env.local ───────────────────────────────────────────────────────
 header "Backing Up Configuration"
@@ -87,10 +99,14 @@ fi
 # ─── Sync code files ─────────────────────────────────────────────────────────
 header "Syncing Code Files"
 
-if [[ "$SCRIPT_DIR" == "$INSTALL_DIR" ]]; then
-  info "Running from install directory — skipping rsync (already up to date)."
-else
-  info "Rsyncing from ${SCRIPT_DIR} to ${INSTALL_DIR}..."
+SOURCE="$SRC_DIR"
+if [[ ! -d "$SOURCE" ]]; then
+  SOURCE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  warn "Source dir ${SRC_DIR} not found — falling back to script dir: ${SOURCE}"
+fi
+
+if [[ "$SOURCE" != "$INSTALL_DIR" ]]; then
+  info "Rsyncing from ${SOURCE} to ${INSTALL_DIR}..."
   rsync -a \
     --exclude='.git' \
     --exclude='node_modules' \
@@ -99,8 +115,10 @@ else
     --exclude='.env' \
     --exclude='logs' \
     --exclude='backups' \
-    "${SCRIPT_DIR}/" "${INSTALL_DIR}/"
+    "${SOURCE}/" "${INSTALL_DIR}/"
   success "Code files synced."
+else
+  info "Source and install are the same directory — skipping rsync."
 fi
 
 cd "$INSTALL_DIR"
@@ -111,8 +129,6 @@ header "Installing Dependencies"
 npm install --include=dev
 success "Dependencies up to date."
 
-# Run safe audit fixes (no --force — never allow breaking changes during update)
-# Only show critical vulnerabilities; dev-dep noise (Prisma internals) is suppressed via .npmrc
 info "Running npm audit fix (safe fixes only)..."
 npm audit fix 2>&1 | grep -E "^(critical|npm error)" || true
 success "Audit fix complete."
@@ -154,7 +170,7 @@ else
 fi
 
 # ─── Restart webhook service ─────────────────────────────────────────────────
-WEBHOOK_SERVICE="webhook-adob"
+WEBHOOK_SERVICE="webhook-homestead"
 if systemctl is-active --quiet "${WEBHOOK_SERVICE}.service" 2>/dev/null; then
   systemctl restart "${WEBHOOK_SERVICE}.service"
   success "Webhook service '${WEBHOOK_SERVICE}' restarted."

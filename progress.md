@@ -4,6 +4,40 @@ Tracks what changed, why, and current status. Updated after each work session.
 
 ---
 
+## 2026-03-22 — Session 4 (v2.3.0 — Update infrastructure + UI)
+
+### What Changed
+
+#### Source directory structure
+- deploy.sh now moves clone to `/opt/homestead-src` after install, regardless of where user cloned from
+- Original clone outside `/opt` is cleaned up automatically — fixes messy `/homestead` in filesystem root
+- update.sh now pulls from `/opt/homestead-src` git repo before syncing to `/opt/homestead`
+
+#### update.sh fully rewritten
+- All `adob` references replaced with `homestead`
+- Install dir: `/opt/homestead`, source dir: `/opt/homestead-src`
+- Webhook service: `webhook-homestead`
+- Pulls latest code from git before syncing
+
+#### UI Update button (Settings page)
+- New "App Update" section in Settings with current version display
+- Clear 6-step description of what the update does
+- Downtime warning (2–5 min)
+- "Update Homestead" button — calls `POST /api/admin/update`
+- `src/app/api/admin/update/route.ts` — authenticated route, runs update.sh in background, logs to `/opt/homestead/logs/update.log`
+
+#### Docs & version
+- ERRORS.md: issues 22 + 23 added (clone location, update.sh rename miss)
+- TODO.md: future roadmap updated, auto-update on push added
+- CHANGELOG.md: v2.3.0 entry added
+- version.ts + package.json: bumped to 2.3.0
+
+### Pending / Next
+- Auto-update on git push (webhook auto-deploy) — groundwork laid
+- Migrate App Default SMTP to DB flag
+
+---
+
 ## 2026-03-22 — Session 3 (Rename: ADOB → Homestead)
 
 ### Deployed
