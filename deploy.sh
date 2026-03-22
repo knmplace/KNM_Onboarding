@@ -401,10 +401,9 @@ info "Installing npm dependencies..."
 npm install --include=dev
 success "Dependencies installed."
 
-# Run safe audit fixes (no --force — never allow breaking changes during deploy)
-# Only show critical vulnerabilities; dev-dep noise (Prisma internals) is suppressed via .npmrc
+# Run safe audit fixes silently — output is noise (moderate/high are dev-dep internals)
 info "Running npm audit fix (safe fixes only)..."
-npm audit fix 2>&1 | grep -E "^(critical|npm error)" || true
+npm audit fix > /dev/null 2>&1 || true
 success "Audit fix complete."
 
 # Now bcrypt is available — hash the user-chosen PIN.

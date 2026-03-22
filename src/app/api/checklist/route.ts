@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSetting } from "@/lib/app-settings";
+import { checkOnboardingTrackerSupport } from "@/lib/wp-client";
+import { getWpConfigForSite } from "@/lib/site-config";
 
 /**
  * GET /api/checklist
@@ -9,13 +11,14 @@ import { getSetting } from "@/lib/app-settings";
  */
 export async function GET() {
   try {
-    const [smtpCount, wpSiteCount, userCount, abstractDbKey] = await Promise.all([
+    const [smtpCount, sites, userCount, abstractDbKey] = await Promise.all([
       prisma.smtpServer.count({ where: { isDefault: true } }),
-      prisma.site.count({
+      prisma.site.findMany({
         where: {
           wordpressUrl: { not: "PLACEHOLDER_CHANGE_ME" },
           wordpressUsername: { not: "PLACEHOLDER_CHANGE_ME" },
         },
+        take: 1,
       }),
       prisma.onboardingState.count({ where: { deletedFromWp: false } }),
       getSetting("ABSTRACT_API_KEY"),
@@ -28,7 +31,7 @@ export async function GET() {
         !!process.env.SMTP_USERNAME &&
         process.env.SMTP_USERNAME !== "PLACEHOLDER_CHANGE_ME");
 
-    const hasWordPress = wpSiteCount > 0;
+    const hasWordPress = sites.length > 0;
 
     const envAbstractKey = process.env.ABSTRACT_API_KEY;
     const hasAbstractApi =
@@ -37,13 +40,25 @@ export async function GET() {
 
     const hasUsers = userCount > 0;
 
+    // Auto-detect mu-plugin via live WP connection if a site is configured
+    let pluginInstalled = false;
+    if (hasWordPress && sites[0]) {
+      try {
+        const wpConfig = getWpConfigForSite(sites[0]);
+        const result = await checkOnboardingTrackerSupport(wpConfig);
+        pluginInstalled = result.ok;
+      } catch {
+        // WP unreachable — leave as false, user can mark done manually
+      }
+    }
+
     const items = [
       {
         id: "install",
         label: "App installed and running",
         done: true,
         link: null,
-        description: "ADOB is up and running.",
+        description: "Homestead is up and running.",
       },
       {
         id: "smtp",
@@ -62,10 +77,10 @@ export async function GET() {
       {
         id: "muplugin",
         label: "Install WordPress mu-plugin",
-        done: false, // Cannot auto-verify without a live WP connection — user dismisses manually
+        done: pluginInstalled,
         link: "/wordpress-setup",
         description: "Required for password change tracking and login activity monitoring.",
-        manualDismiss: true,
+        manualDismiss: !pluginInstalled,
       },
       {
         id: "abstractapi",

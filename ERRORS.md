@@ -525,3 +525,41 @@ update.sh was not included in the v2.2.0 rename pass.
 
 **Fix Applied (update.sh v2.3.0):**
 Fully rewritten: all `adob` references replaced with `homestead`, install dir updated to `/opt/homestead`, source dir updated to `/opt/homestead-src`, webhook service updated to `webhook-homestead`.
+
+---
+
+## Issue 26: npm audit output clutters deploy output even after audit fix runs
+
+**Symptom:**
+```
+11 vulnerabilities (5 moderate, 6 high)
+To address issues that do not require attention, run: npm audit fix
+...
+```
+Printed during deploy even though `npm audit fix` already ran. The filter `grep -E "^(critical|npm error)"` did not suppress summary lines (which start with numbers, not keywords).
+
+**Root Cause:**
+The grep filter only matched lines starting with `critical` or `npm error`. The actual noisy lines are the summary banner, funding notice, and "To address..." advisory — none of which match that pattern.
+
+**Fix Applied (deploy.sh v2.3.2):**
+Changed audit fix command to redirect all output to `/dev/null`:
+```bash
+npm audit fix > /dev/null 2>&1 || true
+```
+The audit fix still runs and applies safe fixes; output is silenced entirely.
+
+---
+
+## Issue 27: mu-plugin checklist item always shows as incomplete even when plugin is installed
+
+**Symptom:**
+Dashboard checklist shows "Install WordPress mu-plugin" with Download ZIP / Guide / Mark Done buttons even after the plugin is installed and the TRACKER connection test passes.
+
+**Root Cause:**
+`/api/checklist` hardcoded `done: false` for the `muplugin` item with a comment "Cannot auto-verify without a live WP connection". But `checkOnboardingTrackerSupport()` already exists in `wp-client.ts` and does exactly this check.
+
+**Fix Applied (checklist/route.ts v2.3.2):**
+- Checklist route now calls `checkOnboardingTrackerSupport()` against the first configured site
+- If the tracker meta is detected in the WP REST API, `pluginInstalled = true` and the item shows as complete (green checkmark, no action buttons)
+- If WP is unreachable or no site configured, falls back to `false` with manual dismiss available
+- `manualDismiss` flag is now conditional — only shown when plugin is not auto-detected

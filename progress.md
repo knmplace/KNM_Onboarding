@@ -4,6 +4,24 @@ Tracks what changed, why, and current status. Updated after each work session.
 
 ---
 
+## 2026-03-22 — Session 5 (v2.3.2 — npm audit suppression + mu-plugin auto-detection)
+
+### What Changed
+
+#### deploy.sh
+- npm audit output now fully suppressed (`> /dev/null 2>&1`) — was showing noisy vulnerability
+  summary lines even after audit fix ran successfully
+
+#### checklist route (`/api/checklist`)
+- mu-plugin item now auto-detects installation status via `checkOnboardingTrackerSupport()`
+  instead of hardcoding `done: false`
+- If a WordPress site is configured and reachable, the tracker API is called live
+- If WP is unreachable or no site is configured, falls back to manual dismiss
+- `manualDismiss` flag is now conditional (only shown when plugin not auto-detected)
+- Fixed stale "ADOB is up and running" description → "Homestead is up and running."
+
+---
+
 ## 2026-03-22 — Session 4b (v2.3.1 — Hotfix: rsync cwd failure after clone removal)
 
 ### What Changed
