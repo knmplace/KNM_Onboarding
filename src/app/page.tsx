@@ -9,6 +9,8 @@ import { UserDetailPanel } from "@/components/user-detail-panel";
 import { GuideGeneratorModal } from "@/components/guide-generator-modal";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { GettingStarted } from "@/components/getting-started";
+import { VersionUpdateBanner } from "@/components/version-update-banner";
+import { useUpdate, UpdateOverlay } from "@/components/update-overlay";
 import { APP_VERSION } from "@/lib/version";
 
 type StepFilter = "all" | "pending_approval" | "awaiting_password_change" | "completed";
@@ -43,6 +45,7 @@ export default function Dashboard() {
     if (typeof window === "undefined") return false;
     return !!localStorage.getItem(`homestead_checklist_dismissed_${APP_VERSION}`);
   });
+  const { overlay: updateOverlay, status: updateStatus, countdown, triggerUpdate } = useUpdate();
 
   const fetchSites = useCallback(async () => {
     try {
@@ -328,6 +331,8 @@ export default function Dashboard() {
   };
 
   return (
+    <>
+    <UpdateOverlay overlay={updateOverlay} status={updateStatus} countdown={countdown} />
     <main className="page-shell">
       <div className="flex items-center justify-between mb-6 gap-4">
         <div>
@@ -429,6 +434,8 @@ export default function Dashboard() {
 
       {error && <div className="theme-alert theme-alert--error">{error}</div>}
       {notice && <div className="theme-alert theme-alert--success">{notice}</div>}
+
+      <VersionUpdateBanner onUpdateClick={triggerUpdate} />
 
       {!checklistDismissed && (
         <GettingStarted
@@ -534,5 +541,6 @@ export default function Dashboard() {
         <GuideGeneratorModal onClose={() => setShowGuideModal(false)} />
       )}
     </main>
+    </>
   );
 }

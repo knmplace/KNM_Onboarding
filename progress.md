@@ -4,6 +4,26 @@ Tracks what changed, why, and current status. Updated after each work session.
 
 ---
 
+## 2026-03-22 — Session 7 (v2.3.3–v2.3.4 — Checklist fixes + version update notifications)
+
+### What Changed
+
+#### v2.3.3 — Checklist localStorage fixes
+- Tied `DISMISSED_KEY` and `MUPLUGIN_KEY` to `APP_VERSION` (e.g. `homestead_checklist_dismissed_2.3.3`) so checklist resets on version bumps instead of persisting forever from old deploys
+- Added auto-dismiss logic: if all required checklist items are already complete on load, the component silently sets the dismissed key and calls `onDismiss()` without showing the panel — prevents checklist from re-appearing on version bumps for fully-configured installs
+
+#### v2.3.4 — Version update notification banner
+- New `GET /api/version-check` route: calls GitHub releases API server-side, compares latest tag to running `APP_VERSION`, returns `{ current, latest, updateType, releaseNotes }`. Result cached in-process for 1 hour.
+- New `VersionUpdateBanner` component: shows a color-coded banner on the dashboard when a newer GitHub release is available (patch=blue, minor=yellow, major=orange). Has "Update Now" button + "Dismiss" (dismisses per-version in localStorage). Shows release notes expandable inline.
+- New `UpdateOverlay` component + `useUpdate` hook: extracted from settings/page.tsx so both dashboard and settings share the same overlay/update logic. No code duplication.
+- `VersionUpdateBanner` appears on the dashboard above the Getting Started checklist
+- Settings page refactored to use shared `useUpdate` hook and `UpdateOverlay` component (removes ~80 lines of duplicated code)
+
+### Current Status
+Fresh deploys always show the Getting Started checklist. Existing configured installs auto-dismiss on version bump. Dashboard now shows update available banner when a new GitHub release exists. v2.3.3 and v2.3.4 releases tagged on GitHub.
+
+---
+
 ## 2026-03-22 — Session 6 (v2.3.2 — UI update button fully working)
 
 ### What Changed
