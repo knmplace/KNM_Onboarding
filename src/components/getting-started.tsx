@@ -30,16 +30,28 @@ export function GettingStarted({ onDismiss, onSyncClick }: Props) {
   const [muPluginDone, setMuPluginDone] = useState(false);
 
   useEffect(() => {
-    setMuPluginDone(!!localStorage.getItem(MUPLUGIN_KEY));
+    const muDone = !!localStorage.getItem(MUPLUGIN_KEY);
+    setMuPluginDone(muDone);
     fetch("/api/checklist")
       .then((r) => r.json())
       .then((data) => {
-        setItems(data.items ?? []);
+        const fetchedItems: ChecklistItem[] = data.items ?? [];
+        // Auto-dismiss if all required items are already complete
+        const resolved = fetchedItems.map((i) =>
+          i.id === "muplugin" ? { ...i, done: muDone } : i
+        );
+        const allRequired = resolved.filter((i) => !i.optional).every((i) => i.done);
+        if (allRequired) {
+          localStorage.setItem(DISMISSED_KEY, "1");
+          onDismiss();
+          return;
+        }
+        setItems(fetchedItems);
         setAllDone(data.allDone ?? false);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [onDismiss]);
 
   function handleMuPluginDismiss() {
     localStorage.setItem(MUPLUGIN_KEY, "1");
