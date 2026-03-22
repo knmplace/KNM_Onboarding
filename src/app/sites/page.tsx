@@ -309,6 +309,21 @@ export default function SitesPage() {
     }
   }
 
+  async function handleDeleteSite(siteId: number, siteName: string) {
+    if (!confirm(`Delete "${siteName}"? This will also remove all linked onboarding records. This cannot be undone.`)) return;
+    setError(null);
+    setNotice(null);
+    try {
+      const res = await fetch(`/api/sites/${siteId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Delete failed");
+      setSites((prev) => prev.filter((s) => s.id !== siteId));
+      setNotice(`"${siteName}" deleted.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Delete failed");
+    }
+  }
+
   return (
     <main className="page-shell">
       <div className="flex items-center justify-between mb-6 gap-4">
@@ -382,6 +397,14 @@ export default function SitesPage() {
                         className="theme-button theme-button--ghost px-3 py-1.5 text-sm disabled:opacity-50"
                       >
                         {testingSiteId === site.id ? "Testing..." : "Test Connections"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteSite(site.id, site.name)}
+                        className="theme-button theme-button--ghost px-3 py-1.5 text-sm"
+                        style={{ color: "var(--danger-text)" }}
+                      >
+                        Delete
                       </button>
                     </div>
                   </div>

@@ -82,13 +82,9 @@ export async function PATCH(
         };
       }
     } else if (smtpServerId === null) {
-      // Explicitly clearing the linked server
       smtpOverride = { smtpServerId: null };
     }
 
-    // For credential fields that come in blank on edit (the UI intentionally
-    // does not pre-fill passwords), keep the existing DB value rather than
-    // overwriting with null.
     const mergedData = {
       ...siteData,
       wordpressAppPassword:
@@ -153,6 +149,44 @@ export async function PATCH(
       );
     }
 
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  _request: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await context.params;
+    const siteId = parseSiteId(id);
+    if (!siteId) {
+      return NextResponse.json({ error: "Invalid site id." }, { status: 400 });
+    }
+
+    const site = await prisma.site.findUnique({ where: { id: siteId } });
+    if (!site) {
+      return NextResponse.json({ error: "Site not found." }, { status: 404 });
+    }
+
+    // Count remaining sites — prevent deleting the last one
+    const siteCount = await prisma.site.count();
+    if (siteCount <= 1) {
+      return NextResponse.json(
+        { error: "Cannot delete the only site. Add another site first." },
+        { status: 400 }
+      );
+    }
+
+    // Delete linked onboarding states first, then the site
+    await prisma.$transaction([
+      prisma.onboardingState.deleteMany({ where: { siteId } }),
+      prisma.site.delete({ where: { id: siteId } }),
+    ]);
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
   }
