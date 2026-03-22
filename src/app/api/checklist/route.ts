@@ -8,9 +8,14 @@ import { prisma } from "@/lib/db";
  */
 export async function GET() {
   try {
-    const [smtpCount, site, userCount] = await Promise.all([
+    const [smtpCount, wpSiteCount, userCount] = await Promise.all([
       prisma.smtpServer.count({ where: { isDefault: true } }),
-      prisma.site.findFirst({ orderBy: { id: "asc" } }),
+      prisma.site.count({
+        where: {
+          wordpressUrl: { not: "PLACEHOLDER_CHANGE_ME" },
+          wordpressUsername: { not: "PLACEHOLDER_CHANGE_ME" },
+        },
+      }),
       prisma.onboardingState.count({ where: { deletedFromWp: false } }),
     ]);
 
@@ -21,11 +26,7 @@ export async function GET() {
         !!process.env.SMTP_USERNAME &&
         process.env.SMTP_USERNAME !== "PLACEHOLDER_CHANGE_ME");
 
-    const hasWordPress =
-      !!site?.wordpressUrl &&
-      site.wordpressUrl !== "PLACEHOLDER_CHANGE_ME" &&
-      !!site?.wordpressUsername &&
-      site.wordpressUsername !== "PLACEHOLDER_CHANGE_ME";
+    const hasWordPress = wpSiteCount > 0;
 
     const hasAbstractApi =
       !!process.env.ABSTRACT_API_KEY &&
