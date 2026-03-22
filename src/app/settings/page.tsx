@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { APP_VERSION } from "@/lib/version";
 
@@ -72,10 +73,13 @@ export default function SettingsPage() {
   const [abstractConfigured, setAbstractConfigured] = useState(false);
   const [abstractSaving, setAbstractSaving] = useState(false);
 
-  // Update state
-  const [updating, setUpdating] = useState(false);
-  const [updateNotice, setUpdateNotice] = useState<string | null>(null);
+  // Update overlay state
+  const [updateOverlay, setUpdateOverlay] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState(150); // 2:30
+  const [updateStatus, setUpdateStatus] = useState<"updating" | "back-online">("updating");
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Shared notices
   const [error, setError] = useState<string | null>(null);
@@ -242,25 +246,137 @@ export default function SettingsPage() {
 
   async function handleUpdate() {
     if (!confirm("Start an update now?\n\nThis will:\n• Pull the latest code from GitHub\n• Run database migrations\n• Rebuild the app\n• Restart the server automatically\n\nThe app will be unavailable for 2–5 minutes during the update. Continue?")) return;
-    setUpdating(true);
     setUpdateError(null);
-    setUpdateNotice(null);
     try {
       const res = await fetch("/api/admin/update", { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to start update.");
-      setUpdateNotice("Update started. The app will rebuild and restart automatically — this takes 2–5 minutes. You may need to refresh your browser after it comes back online.");
     } catch (err) {
       setUpdateError(err instanceof Error ? err.message : "Failed to start update.");
-    } finally {
-      setUpdating(false);
+      return;
     }
+
+    // Show overlay and start countdown
+    setUpdateStatus("updating");
+    setCountdown(150);
+    setUpdateOverlay(true);
+
+    countdownRef.current = setInterval(() => {
+      setCountdown((c) => (c > 0 ? c - 1 : 0));
+    }, 1000);
+
+    // Start polling after 45s (give server time to go down + come back)
+    setTimeout(() => {
+      pollRef.current = setInterval(async () => {
+        try {
+          const r = await fetch("/api/health", { cache: "no-store" });
+          if (r.ok) {
+            // Server is back — clear timers, show success, reload
+            if (countdownRef.current) clearInterval(countdownRef.current);
+            if (pollRef.current) clearInterval(pollRef.current);
+            setUpdateStatus("back-online");
+            setTimeout(() => window.location.reload(), 2000);
+          }
+        } catch {
+          // Still down — keep polling
+        }
+      }, 5000);
+    }, 45000);
   }
 
   const inputClass = "theme-input px-3 py-2 text-sm w-full";
   const labelClass = "block text-sm theme-text-muted mb-1";
 
+  const countdownMins = Math.floor(countdown / 60);
+  const countdownSecs = countdown % 60;
+  const countdownStr = `${countdownMins}:${String(countdownSecs).padStart(2, "0")}`;
+
   return (
+    <>
+    {/* ── Update Overlay ── */}
+    {updateOverlay && (
+      <div
+        style={{
+          position: "fixed", inset: 0, zIndex: 9999,
+          background: "rgba(0,0,0,0.92)",
+          backdropFilter: "blur(12px)",
+          display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center",
+          gap: "24px",
+        }}
+      >
+        {updateStatus === "back-online" ? (
+          <>
+            <div style={{ fontSize: "56px" }}>✅</div>
+            <div style={{ color: "#f5f5f7", fontSize: "22px", fontWeight: 700 }}>Back online!</div>
+            <div style={{ color: "#a1a1a6", fontSize: "14px" }}>Reloading the page...</div>
+          </>
+        ) : (
+          <>
+            {/* Logo with pulse ring */}
+            <div style={{ position: "relative", width: 80, height: 80 }}>
+              <div style={{
+                position: "absolute", inset: -8,
+                borderRadius: "50%",
+                border: "2px solid rgba(99,179,237,0.4)",
+                animation: "ping 1.5s cubic-bezier(0,0,0.2,1) infinite",
+              }} />
+              <Image src="/logo.jpg" alt="Homestead" width={80} height={80} style={{ borderRadius: 16, position: "relative", zIndex: 1 }} />
+            </div>
+
+            <div style={{ textAlign: "center" }}>
+              <div style={{ color: "#f5f5f7", fontSize: "22px", fontWeight: 700, marginBottom: 6 }}>
+                Updating Homestead...
+              </div>
+              <div style={{ color: "#a1a1a6", fontSize: "14px" }}>
+                Pulling latest code, rebuilding, and restarting
+              </div>
+            </div>
+
+            {/* Countdown */}
+            <div style={{
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: 12,
+              padding: "14px 32px",
+              textAlign: "center",
+            }}>
+              <div style={{ color: "#a1a1a6", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>
+                {countdown > 0 ? "Estimated time remaining" : "Taking a bit longer than expected..."}
+              </div>
+              <div style={{ color: "#63b3ed", fontSize: "36px", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
+                {countdown > 0 ? countdownStr : "Still checking..."}
+              </div>
+            </div>
+
+            {/* Animated progress bar */}
+            <div style={{ width: 280, height: 3, background: "rgba(255,255,255,0.1)", borderRadius: 2, overflow: "hidden" }}>
+              <div style={{
+                height: "100%",
+                background: "linear-gradient(90deg, #63b3ed, #a78bfa)",
+                borderRadius: 2,
+                animation: "shimmer 1.8s ease-in-out infinite",
+                width: "60%",
+              }} />
+            </div>
+
+            <div style={{ color: "#6b6b6b", fontSize: "12px" }}>
+              The page will reload automatically when the update is complete.
+            </div>
+          </>
+        )}
+
+        <style>{`
+          @keyframes ping {
+            75%, 100% { transform: scale(1.4); opacity: 0; }
+          }
+          @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(280px); }
+          }
+        `}</style>
+      </div>
+    )}
     <main className="page-shell">
       <div className="flex items-center justify-between mb-6 gap-4">
         <div>
@@ -508,9 +624,6 @@ export default function SettingsPage() {
             </p>
           </div>
 
-          {updateNotice && (
-            <div className="theme-alert theme-alert--success mb-4">{updateNotice}</div>
-          )}
           {updateError && (
             <div className="theme-alert theme-alert--error mb-4">{updateError}</div>
           )}
@@ -518,10 +631,9 @@ export default function SettingsPage() {
           <button
             type="button"
             onClick={handleUpdate}
-            disabled={updating}
-            className="theme-button theme-button--primary px-5 py-2 text-sm disabled:opacity-50"
+            className="theme-button theme-button--primary px-5 py-2 text-sm"
           >
-            {updating ? "Starting update..." : "Update Homestead"}
+            Update Homestead
           </button>
         </div>
       </section>
@@ -573,5 +685,6 @@ export default function SettingsPage() {
         </div>
       </section>
     </main>
+    </>
   );
 }
