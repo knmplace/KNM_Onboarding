@@ -1,4 +1,14 @@
-# ADOB — Deployment Guide
+# Homestead — Deployment Guide
+
+## Where Does Homestead Install?
+
+**No matter where you clone or run `deploy.sh` from, Homestead always installs to `/opt/homestead`.**
+
+This is intentional. `/opt` is the Linux standard location for self-contained third-party applications. It keeps the app isolated, survives user account changes, and is easy to find for maintenance.
+
+Your clone folder is just a temporary source — the script copies everything to `/opt/homestead` automatically. You can clone to your home directory, `/tmp`, or anywhere else. The final install location is always `/opt/homestead`.
+
+---
 
 ## Prerequisites
 
@@ -9,13 +19,36 @@
 
 ---
 
-## Deployment via deploy.sh (Recommended)
+## Quick Start (Recommended)
+
+Clone anywhere and run `deploy.sh` — it handles everything from there:
+
+```bash
+git clone https://github.com/knmplace/homestead.git
+cd homestead
+bash deploy.sh
+```
+
+The app will be installed to `/opt/homestead` regardless of where you cloned.
+
+---
+
+## Deployment via deploy.sh
 
 ### 1. Clone the repository
 
+Clone to any directory you prefer — your home directory is fine:
+
 ```bash
-git clone http://your-git-host/your-username/adob.git /opt/adob
-cd /opt/adob
+# Option A — home directory (clean, easy)
+git clone https://github.com/knmplace/homestead.git ~/homestead
+cd ~/homestead
+
+# Option B — directly to /opt (also fine)
+git clone https://github.com/knmplace/homestead.git /opt/homestead
+cd /opt/homestead
+
+# Either way, the app installs to /opt/homestead
 ```
 
 ### 2. Run the installer
@@ -24,30 +57,26 @@ cd /opt/adob
 bash deploy.sh
 ```
 
-The script runs 10 phases automatically. You will be asked a few questions:
+The script runs interactively through several phases. You will be asked:
 
-**Phase 2 — Infrastructure:**
+**Phase 2 — PostgreSQL:**
 - Do you have an existing PostgreSQL instance? `(y/N)`
   - **Yes** → enter host, port, database name, user, password (connection is tested immediately)
   - **No** → PostgreSQL is installed and configured automatically
-- Do you have an existing n8n instance? `(y/N)`
-  - **Yes** → enter your n8n URL and API key (connection is tested)
-  - **No** → n8n is installed via Docker and an API key is created automatically
 
 **Phase 3 — App credentials:**
-- Required: `NEXT_PUBLIC_APP_URL`, `ACCOUNT_LOGIN_URL`, `SUPPORT_EMAIL`
-- Optional (can finish via setup wizard): WordPress credentials, SMTP credentials, Abstract API key
+- Public app URL, site name/slug
+- WordPress credentials (can skip and finish via setup wizard)
+- SMTP credentials (can skip and finish via setup wizard)
+- Abstract API key for email validation (optional)
+- Setup PIN — you choose this, it protects the first-run setup wizard
 
-**Phase 9 — Auto-deploy webhook (optional):**
+**Phase 8 — Auto-deploy webhook (optional):**
 - Skip entirely, or configure for GitHub or Gitea
 
-### 3. Record the Setup PIN
+### 3. Complete setup (if needed)
 
-If any credentials were skipped, `deploy.sh` prints an 8-character Setup PIN at the end. **Save this PIN** — it is shown once and not stored in plain text anywhere.
-
-### 4. Complete setup (if needed)
-
-Visit `http://YOUR_SERVER_IP:6001` in your browser. If credentials were skipped, you will be redirected to `/setup`. Enter the PIN to access the setup wizard.
+Visit `http://YOUR_SERVER_IP:6001` in your browser. If any credentials were skipped, you will be redirected to `/setup`. Enter the PIN you chose during installation to access the setup wizard.
 
 ---
 
@@ -55,17 +84,30 @@ Visit `http://YOUR_SERVER_IP:6001` in your browser. If credentials were skipped,
 
 | Phase | Action |
 |-------|--------|
-| 0 | Pre-flight: check OS, root/sudo, Docker availability |
-| 1 | Install Node.js 20, npm, PM2, Docker (if needed) |
-| 2 | PostgreSQL and n8n — existing or local |
-| 3 | Collect remaining app credentials |
-| 4 | Write `.env.local` (chmod 600), copy app files |
+| 0 | Pre-flight: check OS, root/sudo |
+| 1 | Install Node.js 20, npm, PM2 (if needed) |
+| 2 | PostgreSQL — existing or local install |
+| 3 | Collect app credentials + choose Setup PIN |
+| 3b | Install local PostgreSQL if chosen |
+| 4 | Copy files to `/opt/homestead`, write `.env.local` (chmod 600) |
 | 5 | `npm install`, `prisma generate`, `prisma db push`, seed default site |
 | 6 | `npm run build` |
 | 7 | PM2 start, save, systemd boot persistence |
-| 8 | Create n8n workflow templates |
-| 9 | Optional auto-deploy webhook |
-| 10 | Print full summary |
+| 8 | Optional auto-deploy webhook (systemd service) |
+| 9 | Print full deployment summary |
+
+---
+
+## Install Directory Reference
+
+| Path | Purpose |
+|------|---------|
+| `/opt/homestead` | App install directory (always) |
+| `/opt/homestead/.env.local` | Environment variables (chmod 600) |
+| `/opt/homestead/.pin-hash` | bcrypt hash of your Setup PIN (chmod 600) |
+| `/opt/homestead/logs/` | PM2 log files |
+| `/opt/homestead/backups/` | `.env.local` backups created by `update.sh` |
+| `/etc/systemd/system/webhook-homestead.service` | Webhook auto-deploy service (if configured) |
 
 ---
 
@@ -100,9 +142,10 @@ sudo systemctl start postgresql && sudo systemctl enable postgresql
 
 # Create DB and user
 sudo -u postgres psql <<SQL
-CREATE DATABASE adob_db;
-CREATE USER adob_user WITH ENCRYPTED PASSWORD 'your_secure_password';
-GRANT ALL PRIVILEGES ON DATABASE adob_db TO adob_user;
+CREATE DATABASE homestead;
+CREATE USER homestead_user WITH ENCRYPTED PASSWORD 'your_secure_password';
+GRANT ALL PRIVILEGES ON DATABASE homestead TO homestead_user;
+ALTER DATABASE homestead OWNER TO homestead_user;
 SQL
 ```
 
@@ -133,12 +176,6 @@ pm2 startup systemd
 # Run the command that pm2 startup prints
 ```
 
-### 7. Create n8n workflow templates
-
-```bash
-npm run n8n:create-templates
-```
-
 ---
 
 ## Post-Deployment
@@ -147,20 +184,18 @@ npm run n8n:create-templates
 
 1. Log in at `http://YOUR_SERVER_IP:6001` with your WordPress admin username and Application Password
 2. Go to **Sites** → **Add Site**
-3. Enter your WordPress site URL — the form auto-derives the remaining fields
+3. Enter your WordPress site URL
 4. Test the connection and save
 
 ### Install the WordPress mu-plugin
 
-See [WORDPRESS_SETUP.md](WORDPRESS_SETUP.md) for instructions on installing the password-change tracker plugin on your WordPress site.
+See [WORDPRESS_SETUP.md](WORDPRESS_SETUP.md) for instructions on installing the KNM Onboarding Helper plugin on your WordPress site.
 
 ---
 
 ## Environment Variables Reference
 
-See `.env.example` for a full annotated list of all supported variables.
-
-Key variables:
+See `.env.example` for a full annotated list. Key variables:
 
 | Variable | Purpose |
 |----------|---------|
@@ -168,41 +203,34 @@ Key variables:
 | `NEXT_PUBLIC_APP_URL` | Public URL of this app |
 | `ACCOUNT_LOGIN_URL` | Login URL shown to end users in emails |
 | `JWT_SECRET` | Session token signing key |
-| `N8N_URL` | n8n instance URL |
-| `N8N_API_KEY` | n8n API key |
 | `WORDPRESS_URL` | WordPress site URL |
 | `WORDPRESS_USERNAME` | WordPress admin username |
 | `WORDPRESS_APP_PASSWORD` | WordPress Application Password |
 | `SMTP_HOST` | SMTP server hostname |
-| `SETUP_REQUIRED` | `"true"` enables setup wizard |
-| `SETUP_PIN_HASH` | bcrypt hash of setup PIN |
+| `SETUP_REQUIRED` | `"true"` enables setup wizard on first visit |
 
 ---
 
 ## Upgrading
 
-Use `update.sh` for all upgrades — it is safe to run on a live server and preserves all credentials.
-
-### Standard update
+Use `update.sh` for all upgrades — safe to run on a live server, preserves all credentials.
 
 ```bash
-cd /opt/KNM_Onboarding
+cd /opt/homestead
 git pull
 bash update.sh
 ```
 
 `update.sh` will:
-1. Detect the existing install and back up `.env.local` to `backups/`
+1. Back up `.env.local` to `backups/`
 2. Stop PM2 gracefully
 3. Rsync code files only — `.env.local`, `node_modules`, `logs`, and `backups` are never touched
 4. `npm install` + `npm audit fix` (safe fixes only)
 5. `prisma db push` — non-destructive schema migrations only
 6. `npm run build`
-7. Restart PM2 and the webhook systemd service (if present)
+7. Restart PM2 and webhook systemd service (if present)
 
-### If auto-deploy webhook is configured
-
-Push to GitHub and the server updates automatically via the webhook.
+If auto-deploy webhook is configured, push to GitHub and the server updates automatically.
 
 ---
 
@@ -210,20 +238,20 @@ Push to GitHub and the server updates automatically via the webhook.
 
 **App won't start:**
 ```bash
-pm2 logs adob
+pm2 logs homestead
 ```
 
 **Database connection errors:**
 ```bash
-# Test connection directly
 psql "$DATABASE_URL" -c "SELECT 1"
 ```
 
-**n8n API errors:**
-```bash
-curl -s -H "X-N8N-API-KEY: $N8N_API_KEY" "$N8N_URL/api/v1/workflows"
-```
-
 **Setup wizard won't accept PIN:**
-- The PIN is case-sensitive and exactly 8 characters
-- If locked out (3 failed attempts), wait 15 minutes or restart the app (`pm2 restart adob`)
+- PIN is case-sensitive, letters and numbers only
+- If locked out, restart the app: `pm2 restart homestead`
+
+**Check running processes:**
+```bash
+pm2 list
+systemctl status webhook-homestead.service
+```

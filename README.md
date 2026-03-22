@@ -39,7 +39,9 @@ cd homestead
 bash deploy.sh
 ```
 
-`deploy.sh` walks you through setup interactively. It asks two binary questions about PostgreSQL (existing instance or local install), then automates everything else.
+`deploy.sh` walks you through setup interactively. It asks about PostgreSQL (existing instance or local install), then automates everything else.
+
+> **Note:** No matter where you clone or run `deploy.sh` from, the app always installs to `/opt/homestead`. Your clone folder is just temporary source — clone to your home directory, `/tmp`, or anywhere you like.
 
 ---
 

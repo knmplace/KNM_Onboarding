@@ -73,6 +73,9 @@ echo "  • Build and start Homestead on port 6001"
 echo "  • Start built-in scheduler (sync, reminders, breach scans — no n8n needed)"
 echo "  • Optionally set up git webhook auto-deploy"
 echo
+echo -e "${BLUE}  ℹ  Install location:${RESET} The app will be installed to /opt/homestead"
+echo "     regardless of where you cloned or are running this script from."
+echo
 
 if ! prompt_yn "Continue with installation?"; then
   echo "Installation cancelled."
