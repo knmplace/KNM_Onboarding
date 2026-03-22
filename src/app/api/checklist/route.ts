@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getSetting } from "@/lib/app-settings";
 
 /**
  * GET /api/checklist
@@ -8,7 +9,7 @@ import { prisma } from "@/lib/db";
  */
 export async function GET() {
   try {
-    const [smtpCount, wpSiteCount, userCount] = await Promise.all([
+    const [smtpCount, wpSiteCount, userCount, abstractDbKey] = await Promise.all([
       prisma.smtpServer.count({ where: { isDefault: true } }),
       prisma.site.count({
         where: {
@@ -17,6 +18,7 @@ export async function GET() {
         },
       }),
       prisma.onboardingState.count({ where: { deletedFromWp: false } }),
+      getSetting("ABSTRACT_API_KEY"),
     ]);
 
     const hasSmtp =
@@ -28,9 +30,10 @@ export async function GET() {
 
     const hasWordPress = wpSiteCount > 0;
 
+    const envAbstractKey = process.env.ABSTRACT_API_KEY;
     const hasAbstractApi =
-      !!process.env.ABSTRACT_API_KEY &&
-      process.env.ABSTRACT_API_KEY !== "PLACEHOLDER_CHANGE_ME";
+      !!(abstractDbKey && abstractDbKey !== "PLACEHOLDER_CHANGE_ME") ||
+      !!(envAbstractKey && envAbstractKey !== "PLACEHOLDER_CHANGE_ME");
 
     const hasUsers = userCount > 0;
 

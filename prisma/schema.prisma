@@ -81,6 +81,14 @@ model Site {
   @@map("site")
 }
 
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("app_setting")
+}
+
 model OnboardingState {
   id              Int       @id @default(autoincrement())
   siteId          Int?      @map("site_id")

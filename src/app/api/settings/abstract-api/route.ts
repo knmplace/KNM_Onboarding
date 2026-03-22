@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
+import { getSetting, setSetting } from "@/lib/app-settings";
 
 export async function GET() {
-  const hasKey =
-    !!process.env.ABSTRACT_API_KEY &&
-    process.env.ABSTRACT_API_KEY !== "PLACEHOLDER_CHANGE_ME";
-  return NextResponse.json({ configured: hasKey });
+  const dbKey = await getSetting("ABSTRACT_API_KEY");
+  const envKey = process.env.ABSTRACT_API_KEY;
+  const configured =
+    !!(dbKey && dbKey !== "PLACEHOLDER_CHANGE_ME") ||
+    !!(envKey && envKey !== "PLACEHOLDER_CHANGE_ME");
+  return NextResponse.json({ configured });
 }
 
 export async function POST(request: Request) {
@@ -17,28 +18,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "API key is required." }, { status: 400 });
   }
 
-  const envPath = path.join(process.cwd(), ".env.local");
-  let envContent = "";
-  try {
-    envContent = fs.readFileSync(envPath, "utf-8");
-  } catch {
-    return NextResponse.json({ error: ".env.local not found." }, { status: 500 });
-  }
-
-  if (/^ABSTRACT_API_KEY=/m.test(envContent)) {
-    envContent = envContent.replace(/^ABSTRACT_API_KEY=.*$/m, `ABSTRACT_API_KEY="${key}"`);
-  } else {
-    envContent += `\nABSTRACT_API_KEY="${key}"\n`;
-  }
-
-  try {
-    fs.writeFileSync(envPath, envContent, { mode: 0o600 });
-  } catch {
-    return NextResponse.json({ error: "Failed to write .env.local." }, { status: 500 });
-  }
-
-  // Update the running process env so the checklist reflects immediately
-  process.env.ABSTRACT_API_KEY = key;
+  await setSetting("ABSTRACT_API_KEY", key);
 
   return NextResponse.json({ ok: true });
 }

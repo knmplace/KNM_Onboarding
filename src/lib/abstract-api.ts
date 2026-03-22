@@ -88,8 +88,9 @@ export interface EmailBreachSummary {
   lastBreachDate: string | null;
 }
 
+import { getSetting } from "@/lib/app-settings";
+
 const ABSTRACT_API_URL = "https://emailreputation.abstractapi.com/v1";
-const API_KEY = process.env.ABSTRACT_API_KEY;
 
 // Rate limiting: Abstract API requires 3-6 seconds between requests
 const ABSTRACT_RATE_LIMIT_MS = 4000; // 4 seconds between requests
@@ -126,10 +127,17 @@ export function isValidEmailFormat(email: string): boolean {
  * Validate email via Abstract API Email Reputation endpoint.
  * Automatically throttles to 4 seconds between API requests to respect rate limits.
  */
+async function resolveApiKey(): Promise<string | null> {
+  const envKey = process.env.ABSTRACT_API_KEY;
+  if (envKey && envKey !== "PLACEHOLDER_CHANGE_ME") return envKey;
+  return getSetting("ABSTRACT_API_KEY");
+}
+
 export async function validateEmail(
   email: string
 ): Promise<EmailValidationResult> {
-  if (!API_KEY) {
+  const apiKey = await resolveApiKey();
+  if (!apiKey) {
     throw new Error("ABSTRACT_API_KEY not configured");
   }
 
@@ -153,7 +161,7 @@ export async function validateEmail(
   // Enforce rate limit before making the API call
   await throttleAbstractApi();
 
-  const url = `${ABSTRACT_API_URL}?api_key=${API_KEY}&email=${encodeURIComponent(email)}`;
+  const url = `${ABSTRACT_API_URL}?api_key=${apiKey}&email=${encodeURIComponent(email)}`;
 
   const response = await fetch(url);
   if (!response.ok) {
