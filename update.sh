@@ -130,7 +130,7 @@ npm install --include=dev
 success "Dependencies up to date."
 
 info "Running npm audit fix (safe fixes only)..."
-npm audit fix 2>&1 | grep -E "^(critical|npm error)" || true
+npm audit fix > /dev/null 2>&1 || true
 success "Audit fix complete."
 
 # ─── Prisma ──────────────────────────────────────────────────────────────────
@@ -138,6 +138,7 @@ header "Running Database Migrations"
 
 if [[ -n "$DATABASE_URL_VAL" ]]; then
   export DATABASE_URL="$DATABASE_URL_VAL"
+  export NODE_PATH="${INSTALL_DIR}/node_modules"
   npx prisma generate
   npx prisma db push --accept-data-loss
   success "Database schema is up to date."
