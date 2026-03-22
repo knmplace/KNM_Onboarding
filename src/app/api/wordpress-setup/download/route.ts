@@ -1,70 +1,30 @@
 import { NextResponse } from "next/server";
+import { PLUGIN_PHP, PLUGIN_FILENAME, PLUGIN_SLUG, buildZip } from "@/lib/plugin-source";
 
-const PHP_CODE = `<?php
 /**
- * Plugin Name: Password Change Tracker
- * Description: Tracks when users change their passwords for onboarding.
- *              Writes last_password_change to user_meta and exposes it in REST API.
- * Version: 1.1
- *
- * Install: Copy this file to wp-content/mu-plugins/password-change-tracker.php
+ * GET /api/wordpress-setup/download
+ *   ?format=php  → raw .php file (for mu-plugins manual install)
+ *   ?format=zip  → standard WP plugin ZIP (for Admin → Plugins → Upload)
+ *   (default)    → zip
  */
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const format = searchParams.get("format") ?? "zip";
 
-function adob_set_last_password_change($user_id) {
-    update_user_meta($user_id, 'last_password_change', wp_date('c'));
-}
+  if (format === "php") {
+    return new NextResponse(PLUGIN_PHP, {
+      headers: {
+        "Content-Type": "application/octet-stream",
+        "Content-Disposition": `attachment; filename="${PLUGIN_FILENAME}"`,
+      },
+    });
+  }
 
-function adob_set_last_login_at($user_id) {
-    update_user_meta($user_id, 'last_login_at', wp_date('c'));
-}
-
-add_action('after_password_reset', function($user) {
-    adob_set_last_password_change($user->ID);
-});
-
-add_action('wp_set_password', function($password, $user_id, $old_user_data) {
-    adob_set_last_password_change($user_id);
-}, 10, 3);
-
-add_action('profile_update', function($user_id, $old_user_data, $userdata) {
-    if (!empty($userdata['user_pass'])) {
-        adob_set_last_password_change($user_id);
-    }
-}, 10, 3);
-
-add_action('wp_login', function($user_login, $user) {
-    if ($user && isset($user->ID)) {
-        adob_set_last_login_at((int) $user->ID);
-    }
-}, 10, 2);
-
-add_action('set_logged_in_cookie', function($logged_in_cookie, $expire, $expiration, $user_id) {
-    if (!empty($user_id)) {
-        adob_set_last_login_at((int) $user_id);
-    }
-}, 10, 4);
-
-add_action('rest_api_init', function() {
-    register_meta('user', 'last_password_change', [
-        'type'        => 'string',
-        'single'      => true,
-        'show_in_rest' => true,
-        'description' => 'ISO timestamp of last password change',
-    ]);
-    register_meta('user', 'last_login_at', [
-        'type'        => 'string',
-        'single'      => true,
-        'show_in_rest' => true,
-        'description' => 'ISO timestamp of most recent successful login',
-    ]);
-});
-`;
-
-export async function GET() {
-  return new NextResponse(PHP_CODE, {
+  const zipBytes = buildZip(PLUGIN_SLUG, PLUGIN_FILENAME, PLUGIN_PHP);
+  return new NextResponse(new Uint8Array(zipBytes), {
     headers: {
-      "Content-Type": "application/octet-stream",
-      "Content-Disposition": 'attachment; filename="password-change-tracker.php"',
+      "Content-Type": "application/zip",
+      "Content-Disposition": `attachment; filename="${PLUGIN_SLUG}.zip"`,
     },
   });
 }

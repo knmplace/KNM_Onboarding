@@ -139,6 +139,7 @@ export default function SitesPage() {
   const [testingSiteId, setTestingSiteId] = useState<number | null>(null);
   const [testingDraftSmtp, setTestingDraftSmtp] = useState(false);
   const [connectionResults, setConnectionResults] = useState<Record<number, ConnectionResults>>({});
+  const [installingPluginForSite, setInstallingPluginForSite] = useState<number | null>(null);
 
   const derived = useMemo(() => {
     const siteUrl = form.siteUrl ? normalizeUrl(form.siteUrl) : "";
@@ -309,6 +310,24 @@ export default function SitesPage() {
     }
   }
 
+  async function installPlugin(siteId: number) {
+    setInstallingPluginForSite(siteId);
+    setError(null);
+    setNotice(null);
+    try {
+      const res = await fetch(`/api/sites/${siteId}/install-plugin`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Install failed.");
+      setNotice(data.message || "Plugin installed and activated.");
+      // Re-run connection test to reflect new tracker status
+      await runConnectionTests(siteId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Plugin install failed.");
+    } finally {
+      setInstallingPluginForSite(null);
+    }
+  }
+
   async function handleDeleteSite(siteId: number, siteName: string) {
     if (!confirm(`Delete "${siteName}"? This will also remove all linked onboarding records. This cannot be undone.`)) return;
     setError(null);
@@ -445,18 +464,41 @@ export default function SitesPage() {
                   {connectionResults[site.id] && (
                     <div
                       className="mt-4 rounded border p-3 text-sm"
-                      style={{
-                        borderColor: "var(--border)",
-                        background: "var(--panel-muted)",
-                      }}
+                      style={{ borderColor: "var(--border)", background: "var(--panel-muted)" }}
                     >
                       <div className="font-medium mb-2">Latest Connection Test</div>
                       {Object.entries(connectionResults[site.id]).map(([key, result]) => (
-                        <div key={key} className="mb-1 last:mb-0">
-                          <span className={result.ok ? "text-green-700" : "text-red-700"}>
-                            {result.ok ? "PASS" : "FAIL"}
-                          </span>{" "}
-                          <strong className="uppercase">{key}</strong>: {result.detail}
+                        <div key={key} className="mb-2 last:mb-0">
+                          <div>
+                            <span className={result.ok ? "text-green-700" : "text-red-700"}>
+                              {result.ok ? "PASS" : "FAIL"}
+                            </span>{" "}
+                            <strong className="uppercase">{key}</strong>: {result.detail}
+                          </div>
+                          {key === "tracker" && !result.ok && (
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => installPlugin(site.id)}
+                                disabled={installingPluginForSite === site.id}
+                                className="theme-button theme-button--primary px-3 py-1 text-xs disabled:opacity-50"
+                              >
+                                {installingPluginForSite === site.id ? "Installing..." : "Install Plugin Automatically"}
+                              </button>
+                              <a
+                                href="/api/wordpress-setup/download?format=zip"
+                                className="theme-button theme-button--ghost px-3 py-1 text-xs"
+                              >
+                                ↓ Download ZIP
+                              </a>
+                              <a
+                                href="/wordpress-setup"
+                                className="text-xs underline theme-text-muted"
+                              >
+                                Install instructions →
+                              </a>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>

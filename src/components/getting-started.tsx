@@ -135,10 +135,16 @@ export function GettingStarted({ onDismiss, onSyncClick }: Props) {
                     Run Sync
                   </button>
                 ) : item.manualDismiss ? (
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
+                    <a
+                      href="/api/wordpress-setup/download?format=zip"
+                      className="theme-button theme-button--primary px-3 py-1 text-xs"
+                    >
+                      ↓ Download ZIP
+                    </a>
                     {item.link && (
-                      <Link href={item.link} className="theme-button theme-button--primary px-3 py-1 text-xs">
-                        View Guide
+                      <Link href={item.link} className="theme-button theme-button--ghost px-3 py-1 text-xs">
+                        Guide
                       </Link>
                     )}
                     <button
