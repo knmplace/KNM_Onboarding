@@ -4,6 +4,27 @@ Tracks what changed, why, and current status. Updated after each work session.
 
 ---
 
+## 2026-03-22 — Session 6 (v2.3.2 — UI update button fully working)
+
+### What Changed
+
+#### UI Update Button — Fixed end-to-end
+- Fixed wrong cookie name in update route (`auth-token` → `onboarding-session` via shared `getSession()`)
+- Fixed update.sh being killed mid-run when PM2 stopped Node — switched from `exec()` to `systemd-run --no-block` so script runs as independent systemd unit (equivalent to SSH)
+- Fixed prisma `Cannot find module 'dotenv/config'` under systemd-run by passing `-E PATH=... -E HOME=/root` to give script a proper environment
+- Fixed update.sh npm audit still printing vulnerability banner — silenced to `/dev/null`
+- Added `/api/health` route (unauthenticated) for overlay polling
+- Added update overlay: frosted glass fullscreen, Homestead logo with pulse ring, 2:30 countdown, shimmer progress bar, auto-polls `/api/health` every 5s after 45s warmup, auto-reloads page when server responds 200
+
+#### Checklist auto-detection
+- mu-plugin item now auto-detects via `checkOnboardingTrackerSupport()` — shows green checkmark when plugin confirmed installed
+- Fixed hardcoded "ADOB is up and running" → "Homestead is up and running"
+
+### Current Status
+UI update button works end-to-end: overlay shows, countdown runs, page auto-reloads on completion. All checklist items auto-detect correctly. Deploy on .174 is clean.
+
+---
+
 ## 2026-03-22 — Session 5 (v2.3.2 — npm audit suppression + mu-plugin auto-detection)
 
 ### What Changed

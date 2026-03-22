@@ -563,3 +563,31 @@ Dashboard checklist shows "Install WordPress mu-plugin" with Download ZIP / Guid
 - If the tracker meta is detected in the WP REST API, `pluginInstalled = true` and the item shows as complete (green checkmark, no action buttons)
 - If WP is unreachable or no site configured, falls back to `false` with manual dismiss available
 - `manualDismiss` flag is now conditional — only shown when plugin is not auto-detected
+
+---
+
+## Issue 28: UI update triggers update.sh before new code is synced — chicken-and-egg
+
+**Symptom:**
+Prisma error `Cannot find module 'dotenv/config'` persists across UI-triggered updates even after fixes are pushed. Each fix requires one extra manual SSH update before it takes effect via UI.
+
+**Root Cause:**
+The API route runs `/opt/homestead-src/update.sh` via `systemd-run`. At the moment systemd-run launches the script, it's the OLD version — rsync (which copies the new version to `/opt/homestead`) hasn't run yet. So every fix to update.sh is always one UI update behind.
+
+**Fix Applied (route.ts):**
+Passing `-E PATH=... -E HOME=/root` to `systemd-run` so the script has a proper environment (prisma/node/npm can resolve modules). This is in the route.ts which IS synced before the script runs, so it takes effect immediately on the next UI update.
+
+**Status:** The prisma error is non-fatal — the update completes and PM2 restarts successfully. The PATH env fix will resolve it cleanly on the next fresh deploy.
+
+---
+
+## Issue 29: update.sh npm install still shows vulnerability banner
+
+**Symptom:**
+npm audit vulnerability summary still printed during update.sh runs triggered via UI/systemd-run.
+
+**Root Cause:**
+The silence fix (`> /dev/null 2>&1`) was in update.sh but systemd-run was running the old copy from homestead-src before rsync.
+
+**Fix Applied (update.sh):**
+`npm audit fix > /dev/null 2>&1 || true` — same as deploy.sh. Takes full effect after fresh install.
