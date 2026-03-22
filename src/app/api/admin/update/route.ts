@@ -16,12 +16,12 @@ export async function POST() {
     { status: 202 }
   );
 
-  // Use nohup + setsid to fully detach from the Node process.
-  // When PM2 stops this process, the script must survive — without detaching,
-  // the child is killed along with Node mid-update.
+  // Use systemd-run to launch as a fully independent system unit.
+  // This is equivalent to running from SSH — owned by systemd, not Node,
+  // so PM2 stopping this process cannot kill the update script mid-run.
   setTimeout(() => {
     exec(
-      `setsid nohup bash ${updateScript} >> /opt/homestead/logs/update.log 2>&1 &`,
+      `systemd-run --no-block bash ${updateScript} >> /opt/homestead/logs/update.log 2>&1`,
       (err) => {
         if (err) {
           console.error(`[admin/update] update.sh failed to launch: ${err.message}`);
