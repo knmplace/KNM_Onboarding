@@ -112,8 +112,9 @@ npm install --include=dev
 success "Dependencies up to date."
 
 # Run safe audit fixes (no --force — never allow breaking changes during update)
+# Only show critical vulnerabilities; dev-dep noise (Prisma internals) is suppressed via .npmrc
 info "Running npm audit fix (safe fixes only)..."
-npm audit fix --audit-level=high 2>&1 | grep -v "^npm warn" || true
+npm audit fix 2>&1 | grep -E "^(critical|npm error)" || true
 success "Audit fix complete."
 
 # ─── Prisma ──────────────────────────────────────────────────────────────────
