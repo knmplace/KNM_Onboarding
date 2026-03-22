@@ -237,7 +237,13 @@ The goal is a **provider architecture** — where each platform is a swappable d
 
 ## License
 
-MIT — free to use, self-host, and modify.
+**MIT with Attribution** — free to use, self-host, modify, and deploy commercially.
+
+**Required:** Any deployment or derivative work must display a visible **"Powered by Homestead — KNMPlace"** attribution link (linking to [knmplace.com](https://knmplace.com)) in the application UI footer. This attribution may not be removed or hidden.
+
+The attribution requirement applies to the application UI only — it does not apply to emails or notifications sent to end users.
+
+See [LICENSE](LICENSE) for full terms.
 
 ---
 

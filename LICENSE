@@ -1,0 +1,56 @@
+MIT License with Attribution Requirement
+
+Copyright (c) 2026 KNMPlace LLC
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+1. ATTRIBUTION REQUIREMENT (required in all cases):
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   In addition, any deployment, distribution, or derivative work of this
+   Software that includes a user-facing application interface MUST display
+   a visible attribution to KNMPlace in the application UI. The required
+   attribution is:
+
+       "Powered by Homestead — KNMPlace"
+
+   with a working hyperlink to https://knmplace.com
+
+   This attribution must appear in the application footer on all pages
+   visible to authenticated users. It may not be hidden, obscured, removed,
+   or replaced. Modifying the style, size, or placement of the attribution
+   is permitted provided it remains clearly visible.
+
+2. NO FALSE AUTHORSHIP:
+
+   You may not represent this Software or any derivative work as your own
+   original creation, claim original authorship of Homestead, or remove
+   references to KNMPlace or Homestead from the source code, documentation,
+   or user interface.
+
+3. COMMERCIAL USE:
+
+   Commercial use, including deploying this Software for paying clients or
+   as part of a commercial service offering, is permitted provided the
+   attribution requirement in section 1 is maintained.
+
+4. EMAILS AND NOTIFICATIONS:
+
+   The attribution requirement applies only to the application user interface.
+   It does not apply to automated emails, notifications, or communications
+   sent to end users by the deployed application.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
