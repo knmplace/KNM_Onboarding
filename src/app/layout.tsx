@@ -3,8 +3,12 @@ import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ADOB — Onboarding Dashboard",
+  title: "Homestead — Onboarding Dashboard",
   description: "User onboarding management",
+  icons: {
+    icon: "/logo.jpg",
+    apple: "/logo.jpg",
+  },
 };
 
 export default function RootLayout({

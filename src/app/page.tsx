@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { FunnelStats } from "@/components/funnel-stats";
 import { UsersTable, OnboardingUser } from "@/components/users-table";
 import { UserDetailPanel } from "@/components/user-detail-panel";
@@ -330,12 +331,15 @@ export default function Dashboard() {
     <main className="page-shell">
       <div className="flex items-center justify-between mb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-bold">
-            Onboarding Dashboard
-            <span className="text-xs font-normal theme-text-soft align-middle ml-2">
-              v{APP_VERSION}
-            </span>
-          </h1>
+          <div className="flex items-center gap-3 mb-1">
+            <Image src="/logo.jpg" alt="Homestead" width={36} height={36} className="rounded-lg" />
+            <h1 className="text-2xl font-bold">
+              Homestead
+              <span className="text-xs font-normal theme-text-soft align-middle ml-2">
+                v{APP_VERSION}
+              </span>
+            </h1>
+          </div>
           <div className="flex items-center gap-2 text-sm theme-text-muted mt-1 flex-wrap">
             <label htmlFor="site-select">Selected site:</label>
             <select

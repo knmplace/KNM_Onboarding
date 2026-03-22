@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -39,8 +40,11 @@ export default function LoginPage() {
       style={{ background: "var(--bg)" }}
     >
       <div className="w-full max-w-md theme-card p-6">
-        <h1 className="text-xl font-semibold mb-1">Onboarding Dashboard</h1>
-        <p className="text-sm theme-text-muted mb-5">Sign in with your admin account.</p>
+        <div className="flex justify-center mb-5">
+          <Image src="/logo.jpg" alt="Homestead" width={120} height={120} priority />
+        </div>
+        <h1 className="text-xl font-semibold mb-1 text-center">Homestead</h1>
+        <p className="text-sm theme-text-muted mb-5 text-center">Sign in with your admin account.</p>
 
         <form onSubmit={onSubmit} className="space-y-4">
           <div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 
 type SetupStatus = {
   required: boolean;
@@ -111,7 +112,10 @@ export default function SetupPage() {
       <div className="theme-card w-full max-w-md p-8">
 
         <div className="mb-6 text-center">
-          <h1 className="text-2xl font-bold">ADOB Setup</h1>
+          <div className="flex justify-center mb-4">
+            <Image src="/logo.jpg" alt="Homestead" width={100} height={100} priority />
+          </div>
+          <h1 className="text-2xl font-bold">Homestead Setup</h1>
           <p className="text-sm theme-text-muted mt-1">First-run configuration</p>
         </div>
 
