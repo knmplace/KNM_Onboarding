@@ -16,13 +16,18 @@ export async function POST() {
     { status: 202 }
   );
 
-  // Delay slightly to allow response to be sent before process is interrupted
+  // Use nohup + setsid to fully detach from the Node process.
+  // When PM2 stops this process, the script must survive — without detaching,
+  // the child is killed along with Node mid-update.
   setTimeout(() => {
-    exec(`bash ${updateScript} >> /opt/homestead/logs/update.log 2>&1`, (err) => {
-      if (err) {
-        console.error(`[admin/update] update.sh failed: ${err.message}`);
+    exec(
+      `setsid nohup bash ${updateScript} >> /opt/homestead/logs/update.log 2>&1 &`,
+      (err) => {
+        if (err) {
+          console.error(`[admin/update] update.sh failed to launch: ${err.message}`);
+        }
       }
-    });
+    );
   }, 500);
 
   return response;
