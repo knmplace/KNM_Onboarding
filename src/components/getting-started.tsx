@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { APP_VERSION } from "@/lib/version";
 
 type ChecklistItem = {
   id: string;
@@ -19,8 +20,8 @@ type Props = {
   onSyncClick: () => void;
 };
 
-const DISMISSED_KEY = "homestead_checklist_dismissed_v1";
-const MUPLUGIN_KEY = "homestead_muplugin_dismissed_v1";
+const DISMISSED_KEY = `homestead_checklist_dismissed_${APP_VERSION}`;
+const MUPLUGIN_KEY = `homestead_muplugin_dismissed_${APP_VERSION}`;
 
 export function GettingStarted({ onDismiss, onSyncClick }: Props) {
   const [items, setItems] = useState<ChecklistItem[]>([]);

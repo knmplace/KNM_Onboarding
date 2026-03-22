@@ -41,7 +41,7 @@ export default function Dashboard() {
   const [showGuideModal, setShowGuideModal] = useState(false);
   const [checklistDismissed, setChecklistDismissed] = useState(() => {
     if (typeof window === "undefined") return false;
-    return !!localStorage.getItem("homestead_checklist_dismissed_v1");
+    return !!localStorage.getItem(`homestead_checklist_dismissed_${APP_VERSION}`);
   });
 
   const fetchSites = useCallback(async () => {
