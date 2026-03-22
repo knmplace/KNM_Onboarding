@@ -19,8 +19,6 @@ type SiteSummary = {
   smtpServerId: number | null;
   smtpFromEmail: string | null;
   smtpFromName: string | null;
-  n8nSyncWorkflowId: string | null;
-  n8nReminderWorkflowId: string | null;
   userCount: number;
   secretsConfigured: {
     wordpressAppPassword: boolean;
@@ -419,16 +417,6 @@ export default function SitesPage() {
                     <div>
                       <div className="theme-text-muted">Credentials Configured</div>
                       <div>{secretSummary(site)}</div>
-                    </div>
-                    <div>
-                      <div className="theme-text-muted">Sync Workflow ID</div>
-                      <div className="break-all">{site.n8nSyncWorkflowId || "Not linked yet"}</div>
-                    </div>
-                    <div>
-                      <div className="theme-text-muted">Reminder Workflow ID</div>
-                      <div className="break-all">
-                        {site.n8nReminderWorkflowId || "Not linked yet"}
-                      </div>
                     </div>
                   </div>
                   {connectionResults[site.id] && (

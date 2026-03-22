@@ -2,39 +2,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { buildSiteConfigFromInput, siteCreateSchema } from "@/lib/site-config";
 import { Prisma } from "@/generated/prisma/client";
-import { createRequire } from "node:module";
-
-const require = createRequire(import.meta.url);
-const {
-  provisionSiteWorkflows,
-} = require("../../../../../scripts/lib/site-n8n-provision.js") as {
-  provisionSiteWorkflows: (
-    site: {
-      id: number;
-      slug: string;
-      name: string;
-      n8nWebhookAuthKey: string | null;
-      n8nSyncWorkflowId: string | null;
-      n8nReminderWorkflowId: string | null;
-      smtpFromEmail: string | null;
-    },
-    options?: { activate?: boolean; appUrl?: string }
-  ) => Promise<{
-    ok: boolean;
-    appUrl: string;
-    authMode: string;
-    workflows: {
-      sync: { id: string; name: string; action: string; active: boolean };
-      reminder: { id: string; name: string; action: string; active: boolean };
-    };
-    verification: Array<{
-      name: string;
-      ok: boolean;
-      status: number;
-      detail: string;
-    }>;
-  }>;
-};
 
 function parseSiteId(raw: string): number | null {
   const parsed = Number.parseInt(raw, 10);
@@ -137,8 +104,6 @@ export async function PATCH(
       smtpFromName: siteData.smtpFromName ?? existing.smtpFromName,
       n8nWebhookAuthKey:
         existing.n8nWebhookAuthKey || siteData.n8nWebhookAuthKey,
-      n8nSyncWorkflowId: existing.n8nSyncWorkflowId,
-      n8nReminderWorkflowId: existing.n8nReminderWorkflowId,
       ...smtpOverride,
     };
 
@@ -146,36 +111,6 @@ export async function PATCH(
       where: { id: siteId },
       data: mergedData,
     });
-
-    let provisioning = null;
-    try {
-      provisioning = await provisionSiteWorkflows(site, { activate: true });
-
-      await prisma.site.update({
-        where: { id: siteId },
-        data: {
-          n8nSyncWorkflowId: provisioning.workflows.sync.id,
-          n8nReminderWorkflowId: provisioning.workflows.reminder.id,
-        },
-      });
-    } catch (provisionError) {
-      const message =
-        provisionError instanceof Error
-          ? provisionError.message
-          : "Unknown n8n provisioning error";
-      return NextResponse.json(
-        {
-          error: `Site was updated, but automated n8n provisioning failed: ${message}`,
-          site: {
-            id: site.id,
-            slug: site.slug,
-            name: site.name,
-          },
-          branding,
-        },
-        { status: 502 }
-      );
-    }
 
     const refreshedSite = await prisma.site.findUnique({
       where: { id: siteId },
@@ -202,13 +137,10 @@ export async function PATCH(
         supportEmail: refreshedSite.supportEmail,
         smtpFromEmail: refreshedSite.smtpFromEmail,
         smtpFromName: refreshedSite.smtpFromName,
-        n8nSyncWorkflowId: refreshedSite.n8nSyncWorkflowId,
-        n8nReminderWorkflowId: refreshedSite.n8nReminderWorkflowId,
         createdAt: refreshedSite.createdAt,
         updatedAt: refreshedSite.updatedAt,
       },
       branding,
-      provisioning,
     });
   } catch (error) {
     if (
