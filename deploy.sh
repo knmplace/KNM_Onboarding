@@ -67,9 +67,10 @@ info "Detected OS: $PRETTY_NAME (package manager: $PKG_MGR)"
 
 echo
 echo "This installer will:"
-echo "  • Install Node.js 20 LTS, PM2, and Docker (if not present)"
-echo "  • Configure PostgreSQL and/or n8n (local or point to existing)"
-echo "  • Build and start ADOB on port 6001 (default)"
+echo "  • Install Node.js 20 LTS and PM2 (if not present)"
+echo "  • Configure PostgreSQL (local or existing)"
+echo "  • Build and start ADOB on port 6001"
+echo "  • Start built-in scheduler (sync, reminders, breach scans — no n8n needed)"
 echo "  • Optionally set up git webhook auto-deploy"
 echo
 
@@ -107,35 +108,8 @@ install_pm2() {
   success "PM2 installed."
 }
 
-install_docker() {
-  if command -v docker &>/dev/null; then
-    success "Docker already installed."
-    return
-  fi
-  info "Installing Docker..."
-  if [[ "$PKG_MGR" == "apt" ]]; then
-    apt-get update -q
-    apt-get install -y ca-certificates curl gnupg lsb-release
-    install -m 0755 -d /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/${OS_ID}/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-    chmod a+r /etc/apt/keyrings/docker.gpg
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
-      https://download.docker.com/linux/${OS_ID} $(lsb_release -cs) stable" \
-      > /etc/apt/sources.list.d/docker.list
-    apt-get update -q
-    apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-  else
-    dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-    dnf install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-    systemctl start docker
-    systemctl enable docker
-  fi
-  success "Docker installed."
-}
-
 install_nodejs
 install_pm2
-install_docker
 
 # ─── Phase 2: Infrastructure selection ───────────────────────────────────────
 header "Phase 2: PostgreSQL Configuration"
@@ -187,14 +161,11 @@ INSTALL_DIR="/opt/adob"
 PM2_APP_NAME="adob"
 
 SERVER_IP=$(hostname -I | awk '{print $1}')
-prompt "Public app URL (e.g. https://onboarding.yourdomain.com) — leave blank to use http://${SERVER_IP}:" NEXT_PUBLIC_APP_URL
-if [[ -z "$NEXT_PUBLIC_APP_URL" ]]; then
-  NEXT_PUBLIC_APP_URL="http://${SERVER_IP}:${APP_PORT}"
-  warn "No URL provided — defaulting to http://${SERVER_IP}:${APP_PORT}"
-else
-  # Strip trailing slash
-  NEXT_PUBLIC_APP_URL="${NEXT_PUBLIC_APP_URL%/}"
-fi
+DEFAULT_APP_URL="http://${SERVER_IP}:${APP_PORT}"
+echo -n "  Public app URL [${DEFAULT_APP_URL}]: "
+read -r NEXT_PUBLIC_APP_URL_INPUT
+NEXT_PUBLIC_APP_URL="${NEXT_PUBLIC_APP_URL_INPUT:-$DEFAULT_APP_URL}"
+NEXT_PUBLIC_APP_URL="${NEXT_PUBLIC_APP_URL%/}"
 
 prompt "Default site slug [my-site]:" DEFAULT_SITE_SLUG_INPUT
 DEFAULT_SITE_SLUG="${DEFAULT_SITE_SLUG_INPUT:-my-site}"

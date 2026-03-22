@@ -10,6 +10,6 @@ export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
   if (process.env.NODE_ENV !== "production" && process.env.ENABLE_SCHEDULER !== "true") return;
 
-  const { startScheduler } = await import("@/lib/scheduler");
+  const { startScheduler } = await import("./lib/scheduler");
   startScheduler();
 }
