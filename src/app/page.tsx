@@ -7,6 +7,7 @@ import { UsersTable, OnboardingUser } from "@/components/users-table";
 import { UserDetailPanel } from "@/components/user-detail-panel";
 import { GuideGeneratorModal } from "@/components/guide-generator-modal";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { GettingStarted } from "@/components/getting-started";
 import { APP_VERSION } from "@/lib/version";
 
 type StepFilter = "all" | "pending_approval" | "awaiting_password_change" | "completed";
@@ -37,6 +38,10 @@ export default function Dashboard() {
   const [notice, setNotice] = useState<string | null>(null);
   const [selectedForBreachScan, setSelectedForBreachScan] = useState<number[]>([]);
   const [showGuideModal, setShowGuideModal] = useState(false);
+  const [checklistDismissed, setChecklistDismissed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return !!localStorage.getItem("adob_checklist_dismissed_v1");
+  });
 
   const fetchSites = useCallback(async () => {
     try {
@@ -420,6 +425,13 @@ export default function Dashboard() {
 
       {error && <div className="theme-alert theme-alert--error">{error}</div>}
       {notice && <div className="theme-alert theme-alert--success">{notice}</div>}
+
+      {!checklistDismissed && (
+        <GettingStarted
+          onDismiss={() => setChecklistDismissed(true)}
+          onSyncClick={handleFullSync}
+        />
+      )}
 
       <FunnelStats counts={counts} />
 

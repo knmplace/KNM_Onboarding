@@ -22,17 +22,6 @@ async function verifySetupSession(): Promise<boolean> {
   }
 }
 
-/** Write or replace a key in .env.local. Single-quotes values with $ chars. */
-function writeEnvVar(content: string, key: string, value: string): string {
-  const linePattern = new RegExp(`^${key}=.*$`, "m");
-  const escaped = value.includes("$")
-    ? `${key}='${value.replace(/'/g, "'\\''")}'`
-    : `${key}="${value.replace(/"/g, '\\"')}"`;
-  return linePattern.test(content)
-    ? content.replace(linePattern, escaped)
-    : content + `\n${escaped}`;
-}
-
 export async function POST(request: Request) {
   if (process.env.SETUP_REQUIRED !== "true") {
     return NextResponse.json({ error: "Setup is already complete." }, { status: 403 });
@@ -43,9 +32,8 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const { admin, smtp } = body as {
+  const { admin } = body as {
     admin?: { firstName?: string; lastName?: string; email?: string; password?: string };
-    smtp?: Record<string, string>;
   };
 
   // ── Validate admin fields ────────────────────────────────────────────────
@@ -85,7 +73,7 @@ export async function POST(request: Request) {
     },
   });
 
-  // ── Write SMTP settings to .env.local ────────────────────────────────────
+  // ── Mark setup complete in .env.local ────────────────────────────────────
   const envPath = path.join(process.cwd(), ".env.local");
   let envContent = "";
   try {
@@ -94,21 +82,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: ".env.local not found." }, { status: 500 });
   }
 
-  const smtpMap: Record<string, string> = {
-    SMTP_HOST: smtp?.smtpHost ?? "",
-    SMTP_PORT: smtp?.smtpPort ?? "465",
-    SMTP_SECURE: smtp?.smtpSecure ?? "true",
-    SMTP_USERNAME: smtp?.smtpUsername ?? "",
-    SMTP_PASSWORD: smtp?.smtpPassword ?? "",
-    SMTP_FROM_EMAIL: smtp?.smtpFromEmail ?? "",
-    SMTP_FROM_NAME: smtp?.smtpFromName ?? "",
-  };
-
-  for (const [key, value] of Object.entries(smtpMap)) {
-    if (value) envContent = writeEnvVar(envContent, key, value);
-  }
-
-  // Mark setup complete so middleware stops redirecting to /setup
   envContent = envContent.replace(/^SETUP_REQUIRED=.*$/m, 'SETUP_REQUIRED="false"');
 
   try {
