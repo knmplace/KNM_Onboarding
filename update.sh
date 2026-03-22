@@ -138,11 +138,8 @@ header "Running Database Migrations"
 
 if [[ -n "$DATABASE_URL_VAL" ]]; then
   export DATABASE_URL="$DATABASE_URL_VAL"
-  export NODE_PATH="${INSTALL_DIR}/node_modules"
-  # Use full path to node/prisma to ensure correct module resolution
-  # when launched via systemd-run (stripped environment)
-  "${INSTALL_DIR}/node_modules/.bin/prisma" generate
-  "${INSTALL_DIR}/node_modules/.bin/prisma" db push --accept-data-loss
+  npx prisma generate
+  npx prisma db push --accept-data-loss
   success "Database schema is up to date."
 else
   warn "DATABASE_URL not found in .env.local — skipping Prisma migration."

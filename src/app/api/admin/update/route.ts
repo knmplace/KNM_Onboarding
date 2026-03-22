@@ -17,11 +17,11 @@ export async function POST() {
   );
 
   // Use systemd-run to launch as a fully independent system unit.
-  // This is equivalent to running from SSH — owned by systemd, not Node,
-  // so PM2 stopping this process cannot kill the update script mid-run.
+  // Pass PATH and HOME so the script has a proper environment (systemd-run
+  // strips env by default, which breaks node/npm/prisma resolution).
   setTimeout(() => {
     exec(
-      `systemd-run --no-block bash ${updateScript} >> /opt/homestead/logs/update.log 2>&1`,
+      `systemd-run --no-block -E PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin -E HOME=/root bash ${updateScript} >> /opt/homestead/logs/update.log 2>&1`,
       (err) => {
         if (err) {
           console.error(`[admin/update] update.sh failed to launch: ${err.message}`);
