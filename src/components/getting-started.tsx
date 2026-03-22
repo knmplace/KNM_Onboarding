@@ -19,8 +19,8 @@ type Props = {
   onSyncClick: () => void;
 };
 
-const DISMISSED_KEY = "adob_checklist_dismissed_v1";
-const MUPLUGIN_KEY = "adob_muplugin_dismissed_v1";
+const DISMISSED_KEY = "homestead_checklist_dismissed_v1";
+const MUPLUGIN_KEY = "homestead_muplugin_dismissed_v1";
 
 export function GettingStarted({ onDismiss, onSyncClick }: Props) {
   const [items, setItems] = useState<ChecklistItem[]>([]);

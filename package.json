@@ -1,6 +1,6 @@
 {
-  "name": "adob",
-  "version": "2.0.0",
+  "name": "homestead",
+  "version": "2.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev -p 6001",

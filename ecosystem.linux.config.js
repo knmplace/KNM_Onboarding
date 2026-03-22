@@ -1,17 +1,17 @@
 /**
- * ADOB — PM2 Ecosystem Config (Linux Production)
+ * Homestead — PM2 Ecosystem Config (Linux Production)
  *
  * Generated and customized by deploy.sh.
  * To use manually: pm2 start ecosystem.linux.config.js
  *
  * Environment variables (set in .env.local or system env):
- *   PM2_APP_NAME  — PM2 process name          (default: adob)
- *   PROJECT_DIR   — Absolute install path      (default: /opt/adob)
+ *   PM2_APP_NAME  — PM2 process name          (default: homestead)
+ *   PROJECT_DIR   — Absolute install path      (default: /opt/homestead)
  *   APP_PORT      — Port the Next.js app runs on (default: 6001)
  */
 
-const appName = process.env.PM2_APP_NAME || "adob";
-const projectDir = process.env.PROJECT_DIR || "/opt/adob";
+const appName = process.env.PM2_APP_NAME || "homestead";
+const projectDir = process.env.PROJECT_DIR || "/opt/homestead";
 const appPort = parseInt(process.env.APP_PORT || "6001", 10);
 
 module.exports = {

@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const appName = process.env.PM2_APP_NAME || "adob";
+  const appName = process.env.PM2_APP_NAME || "homestead";
 
   // Respond immediately — the restart will kill this process
   const response = NextResponse.json({ ok: true, restarting: true }, { status: 202 });
