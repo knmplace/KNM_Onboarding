@@ -311,6 +311,8 @@ if [[ "$SCRIPT_DIR" != "$SRC_DIR" && "$SCRIPT_DIR" != "$INSTALL_DIR" ]]; then
   rsync -a --exclude='node_modules' --exclude='.next' --exclude='logs' \
     "${SCRIPT_DIR}/" "${SRC_DIR}/"
   success "Source moved to ${SRC_DIR}."
+  # Change into SRC_DIR BEFORE deleting original — shell must have a valid cwd
+  cd "$SRC_DIR"
   # Clean up original clone location if it's outside /opt to avoid clutter
   if [[ "$SCRIPT_DIR" != /opt/* ]]; then
     info "Cleaning up original clone at ${SCRIPT_DIR}..."

@@ -4,6 +4,16 @@ Tracks what changed, why, and current status. Updated after each work session.
 
 ---
 
+## 2026-03-22 — Session 4b (v2.3.1 — Hotfix: rsync cwd failure after clone removal)
+
+### What Changed
+- deploy.sh: added `cd "$SRC_DIR"` before `rm -rf "$SCRIPT_DIR"` — fixes rsync
+  "No such file or directory (2)" error caused by shell cwd being deleted mid-script
+- ERRORS.md: Issue 24 documented
+- version bumped to 2.3.1
+
+---
+
 ## 2026-03-22 — Session 4 (v2.3.0 — Update infrastructure + UI)
 
 ### What Changed

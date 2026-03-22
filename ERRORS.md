@@ -473,6 +473,26 @@ deploy.sh now automatically moves the source clone to `/opt/homestead-src` after
 
 ---
 
+## Issue 24: rsync fails after original clone is removed — "No such file or directory (2)"
+
+**Symptom:**
+```
+rsync: [Receiver] getcwd(): No such file or directory (2)
+rsync error: errors selecting input/output files, dirs (code 3)
+```
+
+**Root Cause:**
+deploy.sh moved the source clone to `/opt/homestead-src` then immediately ran
+`rm -rf "$SCRIPT_DIR"` to clean up the original. The shell's current working
+directory was still pointing to `$SCRIPT_DIR` (now deleted), so when rsync ran
+next it had no valid working directory and failed with code 3.
+
+**Fix Applied (deploy.sh v2.3.1):**
+Added `cd "$SRC_DIR"` immediately after the rsync move and before `rm -rf "$SCRIPT_DIR"`.
+Shell cwd is now `/opt/homestead-src` before the original is deleted — rsync succeeds.
+
+---
+
 ## Issue 23: update.sh referenced old adob paths and names
 
 **Symptom:**
