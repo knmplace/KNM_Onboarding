@@ -180,16 +180,26 @@ pm2 startup systemd
 
 ## Post-Deployment
 
+### Log in and complete configuration
+
+1. Visit `http://YOUR_SERVER_IP:6001` in your browser
+2. If the setup wizard ran during `deploy.sh`, log in with the admin account you created
+3. The **Getting Started checklist** on the dashboard guides you through the remaining steps:
+   - Configure your SMTP email server (Settings → SMTP Library)
+   - Connect your WordPress site (Sites → Add Site)
+   - Install the WordPress mu-plugin for password-change tracking
+   - Add your Abstract API key for email validation (optional)
+   - Run your first user sync
+
 ### Add your first site
 
-1. Log in at `http://YOUR_SERVER_IP:6001` with your WordPress admin username and Application Password
-2. Go to **Sites** → **Add Site**
-3. Enter your WordPress site URL
-4. Test the connection and save
+1. Go to **Sites → Add Site**
+2. Enter your WordPress site URL, admin username, and Application Password
+3. Test the connection and save
 
 ### Install the WordPress mu-plugin
 
-See [WORDPRESS_SETUP.md](WORDPRESS_SETUP.md) for instructions on installing the KNM Onboarding Helper plugin on your WordPress site.
+See [WORDPRESS_SETUP.md](WORDPRESS_SETUP.md) for instructions on installing the Homestead password-change tracker plugin on your WordPress site.
 
 ---
 

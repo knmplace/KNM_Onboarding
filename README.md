@@ -191,8 +191,6 @@ bash /opt/homestead-src/update.sh
 |------|----------|
 | [DEPLOY.md](DEPLOY.md) | Full deployment walkthrough, update.sh usage, manual fallback steps |
 | [WORDPRESS_SETUP.md](WORDPRESS_SETUP.md) | WordPress mu-plugin install, Application Password setup |
-| [CHANGELOG.md](CHANGELOG.md) | Version history |
-| [ERRORS.md](ERRORS.md) | Known issues, fixes applied, troubleshooting |
 
 ---
 
@@ -207,6 +205,33 @@ bash /opt/homestead-src/update.sh
 | Email Validation | Abstract API (optional) |
 | WordPress Integration | ProfileGrid REST API + Application Passwords |
 | Deployment | Bash (`deploy.sh`), optional GitHub webhook auto-deploy |
+
+---
+
+## Upcoming Features
+
+Homestead is actively developed. The following capabilities are on our roadmap — no commitments on timing, but these represent the direction the platform is heading.
+
+### Platform Expansion — Beyond WordPress + ProfileGrid
+
+Currently Homestead requires WordPress with the ProfileGrid plugin to sync and manage users. We intend to open this up significantly:
+
+- **WordPress without ProfileGrid** — support for standard WordPress user management via the native WP Users REST API, making Homestead compatible with any WordPress site regardless of which membership or community plugin is installed
+- **WooCommerce** — onboard customers as they register, with order and account context built in
+- **Manual / CSV import** — add users directly or import via spreadsheet, making Homestead useful for businesses with no CMS at all
+- **Generic inbound webhook** — any platform can push user data to Homestead via a simple API, eliminating the need for platform-specific integrations
+- **Shopify** — onboard Shopify customers through the same workflow
+- **SaaS identity platforms** — support for Auth0, Clerk, and similar platforms used in custom-built applications
+
+The goal is a **provider architecture** — where each platform is a swappable driver implementing the same interface. Existing WordPress + ProfileGrid installs will continue to work exactly as they do today.
+
+### Other Planned Improvements
+
+- **Demo mode** — a read-only preview environment for evaluating Homestead without a live server
+- **Role-based access** — multiple admin accounts with different permission levels
+- **Audit log** — full history of admin actions per user
+- **Webhook outbound events** — notify external systems when a user completes onboarding
+- **White-label branding** — configure Homestead's own UI to match your brand
 
 ---
 
