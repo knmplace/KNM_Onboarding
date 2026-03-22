@@ -473,6 +473,28 @@ deploy.sh now automatically moves the source clone to `/opt/homestead-src` after
 
 ---
 
+## Issue 25: Logo not displaying on login, setup, or dashboard pages
+
+**Symptom:**
+`/logo.jpg` shows as broken image on login, setup, and dashboard pages even though
+the file exists in `/opt/homestead/public/logo.jpg`.
+
+**Root Cause:**
+The middleware was intercepting requests to `/logo.jpg` and redirecting them to
+`/setup` (when `SETUP_REQUIRED=true`) or `/login` (auth guard). Two problems:
+1. `/logo.jpg` was not in the `PUBLIC_PREFIXES` list
+2. The setup redirect check was duplicating the public path logic instead of
+   reusing `isPublic()`, so `/logo.jpg` slipped through even after being added
+   to PUBLIC_PREFIXES
+3. The middleware `matcher` regex did not exclude `.jpg`/`.png` static files
+
+**Fix Applied (middleware.ts v2.3.2):**
+- Added `/logo.jpg` and `/logo.png` to `PUBLIC_PREFIXES`
+- Refactored setup redirect to use `isPublic()` — single source of truth
+- Updated `matcher` regex to exclude all common image extensions
+
+---
+
 ## Issue 24: rsync fails after original clone is removed — "No such file or directory (2)"
 
 **Symptom:**

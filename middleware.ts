@@ -14,6 +14,8 @@ const PUBLIC_PREFIXES = [
   "/api/auth",
   "/_next",
   "/favicon.ico",
+  "/logo.jpg",
+  "/logo.png",
   "/images",
   "/fonts",
 ];
@@ -26,8 +28,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // ── 1. Setup redirect — always takes priority ─────────────────────────────
-  if (!pathname.startsWith("/setup") && !pathname.startsWith("/api/setup") &&
-      !pathname.startsWith("/_next") && !pathname.startsWith("/favicon.ico")) {
+  if (!isPublic(pathname)) {
     if (process.env.SETUP_REQUIRED === "true") {
       return NextResponse.redirect(new URL("/setup", request.url));
     }
@@ -53,5 +54,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:jpg|jpeg|png|gif|svg|ico|webp)).*)"],
 };
